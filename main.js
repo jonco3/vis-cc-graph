@@ -48,6 +48,10 @@ function processLog(data) {
       break;
     }
 
+    case "IncrementalRoot": {
+      break; // Ignore these.
+    }
+
     default: {
       if (!words[0].startsWith("0x")) {
         throw "Unexpected entry: " + line;
@@ -57,7 +61,7 @@ function processLog(data) {
         throw "Can't parse address: " + line;
       }
       let rc = -1; // => GC object.
-      if (words[1] !== "[gc]") {
+      if (!words[1].startsWith("[gc")) {
         let match = words[1].match(/^\[rc=(\d+)\]$/);
         if (!match) {
           throw "Can't parse refcount word: " + line;

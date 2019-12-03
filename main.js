@@ -1,3 +1,5 @@
+let simulation;
+
 d3.text("data.log", function(error, data) {
   if (error) {
     throw error;
@@ -60,13 +62,13 @@ function processLog(data) {
         if (!match) {
           throw "Can't parse refcount word: " + line;
         }
-        let rc = parseInt(match[1]);
+        rc = parseInt(match[1]);
         if (Number.isNaN(rc)) {
           throw "Can't parse refcount number: " + match[1];
         }
       }
       let kind = words.slice(2).join(" ");
-      object = {id: addr, rc: rc, name: kind, children: []};
+      object = {id: addr, rc: rc, name: kind, fullname: line, children: []};
       if (objects.has(addr)) {
         throw "Duplicate object address: " + line;
       }
@@ -96,10 +98,26 @@ function display(objects) {
       .attr("width", width)
       .attr("height", height)
 
+  let defs = svg.append("defs");
+
+  defs
+    .append("marker")
+		.attr("id", "arrowhead")
+		.attr("viewBox", "0 -5 10 10")
+	  .attr("refX", 15)
+    .attr("refY", 0)
+	  .attr("markerWidth", 10)
+	  .attr("markerHeight", 10)
+    .attr("orient", "auto")
+    .attr("markerUnits", "strokeWidth")
+		.append("path")
+		.attr("d", "M0,-5L10,0L0,5 Z")
+    .attr("fill", "#999");
+
   let nodes = Array.from(objects.values());
   let links = getLinks(objects);
 
-  let simulation = d3.forceSimulation()
+  simulation = d3.forceSimulation()
       .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(30))
       .force("charge", d3.forceManyBody().strength(-200))
       .force("collision", d3.forceCollide().radius(30))
@@ -111,7 +129,8 @@ function display(objects) {
       .selectAll("line")
       .data(links)
       .enter().append("line")
-      .attr("stroke-width", function(d) { return Math.sqrt(d.value); });
+      .attr("stroke", "black")
+		  .attr("marker-end", "url(#arrowhead)");
 
   let node = svg.append("g")
       .attr("class", "nodes")
@@ -121,20 +140,21 @@ function display(objects) {
 
   node.append("circle")
     .attr("r", 5)
-    .attr("fill", function(d) { return "#dddddd"; })
+    .attr("fill", d => d.rc === -1 ? "#aaaaff" : "#aaffaa")
     .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
 
+    /*
   node.append("text")
     .text(function(d) { return d.name; })
     .attr('x', 6)
     .attr('y', 3);
-
+    */
   
   node.append("title")
-    .text(function(d) { return d.id; });
+    .text(function(d) { return d.fullname; });
 
   simulation
       .nodes(nodes)
@@ -159,9 +179,11 @@ function display(objects) {
 }
 
 function dragstarted(d) {
-  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
   d.fx = d.x;
   d.fy = d.y;
+  if (!d3.event.active) {
+    simulation.alphaTarget(0.3).restart();
+  }
 }
 
 function dragged(d) {
@@ -169,10 +191,13 @@ function dragged(d) {
   d.fy = d3.event.y;
 
 }
+
 function dragended(d) {
-  if (!d3.event.active) simulation.alphaTarget(0);
   d.fx = null;
   d.fy = null;
+  if (!d3.event.active) {
+    simulation.alphaTarget(0);
+  }
 }
 
 function getLinks(objects) {

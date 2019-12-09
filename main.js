@@ -1,20 +1,46 @@
-let simulation;
+"use strict";
 
-d3.text("data.log", function(error, data) {
-  if (error) {
-    throw error;
+/*
+ * Visualise cycle collector graphs.
+ */
+
+let data = [];
+
+const inputURL = "data.log";
+
+function init() {
+  document.getElementById("update").onclick = function() {
+    update();
   }
+  
+  setStatus(`Loading ${inputURL}`);
 
-  let objects = processLog(data);
+  const request = new XMLHttpRequest();
+  request.onerror = function (event) {
+    setStatus(`Error loading ${inputURL}: ${event.message}`);
+  }
+  request.onprogress = function (event) {
+    const percent = Math.floor(100 * event.loaded / event.total);
+    setStatus(`Loading ${percent}%`);
+  }
+  request.onload = function loaded() {
+    setStatus(`Loaded`);
+    data = parseLog(this.responseText);
+    update();
+  }
+  request.open("GET", inputURL);
+  request.send();
+}
 
-  display(objects);
-});
+function setStatus(message) {
+  document.getElementById("status").textContent = message;
+}
 
-function processLog(data) {
+function parseLog(data) {
   let objects = new Map();
   let object;
   let done = false;
-  console.log("processing");
+
   for (let line of data.split("\n")) {
     if (line === "" || line.startsWith("#")) {
       continue;
@@ -72,7 +98,12 @@ function processLog(data) {
         }
       }
       let kind = words.slice(2).join(" ");
-      object = {id: addr, rc: rc, name: kind, fullname: line, children: []};
+      object = {id: addr,
+                rc: rc,
+                name: kind,
+                fullname: line,
+                children: [],
+                selected: false};
       if (objects.has(addr)) {
         throw "Duplicate object address: " + line;
       }
@@ -87,59 +118,47 @@ function processLog(data) {
     }
   }
 
-  console.log("  done.");
   return objects;
 }
 
-function display(objects) {
-  let count = objects.size;
+function update() {
+  let filter = document.getElementById("filter").value;
+  let depth = parseInt(document.getElementById("depth").value);
+  display(data, filter, depth);
+}
 
-  let width = Math.sqrt(count) * 120;
+function display(nodeMap, filter, depth) {
+  let nodeList = Array.from(nodeMap.values());
+  let count = selectNodes(nodeMap, filter, depth);
+  let links = getLinks(nodeMap);
+
+  let width = Math.max(Math.sqrt(count) * 120, 200);
   let height = width;
 
+  d3.select("svg").remove();
   let body = d3.select("body");
-  let svg = body.insert("svg")
+  let svg = body.append("svg")
       .attr("width", width)
       .attr("height", height)
 
-  let defs = svg.append("defs");
-
-  defs
-    .append("marker")
-		.attr("id", "arrowhead")
-		.attr("viewBox", "0 -5 10 10")
-	  .attr("refX", 15)
-    .attr("refY", 0)
-	  .attr("markerWidth", 10)
-	  .attr("markerHeight", 10)
-    .attr("orient", "auto")
-    .attr("markerUnits", "strokeWidth")
-		.append("path")
-		.attr("d", "M0,-5L10,0L0,5 Z")
-    .attr("fill", "#999");
-
-  let nodes = Array.from(objects.values());
-  let links = getLinks(objects);
-
-  simulation = d3.forceSimulation()
-      .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(30))
-      .force("charge", d3.forceManyBody().strength(-200))
-      .force("collision", d3.forceCollide().radius(30))
-      .force("x", d3.forceX(width / 2))
-      .force("y", d3.forceY(height / 2));
-
-  var link = svg.append("g")
-      .attr("class", "links")
-      .selectAll("line")
-      .data(links)
-      .enter().append("line")
-      .attr("stroke", "black")
-		  .attr("marker-end", "url(#arrowhead)");
+  let defs = svg.append("defs")
+      .append("marker")
+		  .attr("id", "arrowhead")
+		  .attr("viewBox", "0 -5 10 10")
+	    .attr("refX", 15)
+      .attr("refY", 0)
+	    .attr("markerWidth", 10)
+	    .attr("markerHeight", 10)
+      .attr("orient", "auto")
+      .attr("markerUnits", "strokeWidth")
+		  .append("path")
+		  .attr("d", "M0,-5L10,0L0,5 Z")
+      .attr("fill", "#999");
 
   let node = svg.append("g")
       .attr("class", "nodes")
       .selectAll("g")
-      .data(nodes)
+      .data(nodeList.filter(d => d.selected))
       .enter().append("g")
 
   node.append("circle")
@@ -150,24 +169,40 @@ function display(objects) {
           .on("drag", dragged)
           .on("end", dragended));
 
-    /*
   node.append("text")
     .text(function(d) { return d.name; })
     .attr('x', 6)
     .attr('y', 3);
-    */
   
   node.append("title")
     .text(function(d) { return d.fullname; });
 
+  var link = svg.append("g")
+      .attr("class", "links")
+      .selectAll("line")
+      .data(links)
+      .enter().append("line")
+      .attr("stroke", "black")
+		  .attr("marker-end", "url(#arrowhead)");
+
+  let simulation = d3.forceSimulation()
+      .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(50))
+      .force("charge", d3.forceManyBody().strength(-1))
+      .force("collision", d3.forceCollide().radius(30))
+      .force("center", d3.forceCenter(width / 2, height / 2));
+
   simulation
-      .nodes(nodes)
+      .nodes(nodeList)
       .on("tick", ticked);
 
   simulation.force("link")
     .links(links);
 
   function ticked() {
+    const radius = 10;
+    node
+      .attr("cx", function(d) { return d.x = Math.max(radius, Math.min(width - radius, d.x)); })
+      .attr("cy", function(d) { return d.y = Math.max(radius, Math.min(height - radius, d.y)); });
     link
       .attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })
@@ -180,28 +215,69 @@ function display(objects) {
       })
   }
 
-}
+  function dragstarted(d) {
+    d.fx = d.x;
+    d.fy = d.y;
+    if (!d3.event.active) {
+      simulation.alphaTarget(0.3).restart();
+    }
+  }
 
-function dragstarted(d) {
-  d.fx = d.x;
-  d.fy = d.y;
-  if (!d3.event.active) {
-    simulation.alphaTarget(0.3).restart();
+  function dragged(d) {
+    d.fx = d3.event.x;
+    d.fy = d3.event.y;
+
+  }
+
+  function dragended(d) {
+    d.fx = null;
+    d.fy = null;
+    if (!d3.event.active) {
+      simulation.alphaTarget(0);
+    }
   }
 }
 
-function dragged(d) {
-  d.fx = d3.event.x;
-  d.fy = d3.event.y;
-
-}
-
-function dragended(d) {
-  d.fx = null;
-  d.fy = null;
-  if (!d3.event.active) {
-    simulation.alphaTarget(0);
+function selectNodes(nodeMap, filter, maxDepth) {
+  if (!maxDepth || Number.isNaN(maxDepth)) {
+    maxDepth = 1;
   }
+
+  let count = 0;
+  let worklist = [];
+  for (let d of nodeMap.values()) {
+    d.selected = !filter || d.name.includes(filter);
+    if (d.selected) {
+      count++;
+      if (filter) {
+        worklist.push({node: d, depth: 0});
+      }
+    }
+  }
+
+  if (!filter) {
+    return count;
+  }
+
+  while (worklist.length) {
+    let item = worklist.pop();
+    let depth = item.depth + 1;
+    for (let obj of item.node.children) {
+      let child = nodeMap.get(obj.id);
+      if (!child) {
+        throw `Missing child {id}`;
+      }
+      if (!child.selected) {
+        count++;
+        child.selected = true;
+        if (depth < maxDepth) {
+          worklist.push({node: child, depth: depth});
+        }
+      }
+    }
+  }
+
+  return count;
 }
 
 function getLinks(objects) {
@@ -209,9 +285,11 @@ function getLinks(objects) {
   for (let object of objects.values()) {
     for (let child of object.children) {
       if (!objects.has(child.id)) {
-        throw "Child id not found";
+        throw `Child ${child.id} not found`;
       }
-      links.push({source: object.id, target: child.id});
+      if (object.selected && objects.get(child.id).selected) {
+        links.push({source: object.id, target: child.id});
+      }
     }
   }
   return links;

@@ -4,8 +4,19 @@
     <meta charset="utf-8">
     <link type="text/css" rel="stylesheet" href="style.css"/>
     <script src="https://d3js.org/d3.v4.js"></script>
-  </head>
-  <body>
     <script src="main.js"></script>
+  </head>
+  <body onload="init()">
+    <div>
+      <form>
+        <label>Filter:</label>
+        <input id="filter" type="text" value="Document"></input>
+        <label>Depth:</label>
+        <input id="depth" type="text" value="1"></input>
+        <input id="update" type="button" value="Update"></input>
+        <label>Status:</label>
+        <span id="status"></span>
+      </form>
+    </div>
   </body>
 </html>

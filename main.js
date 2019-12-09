@@ -97,7 +97,7 @@ function parseLog(data) {
           throw "Can't parse refcount number: " + match[1];
         }
       }
-      let kind = words.slice(2).join(" ");
+      let kind = words[2];
       object = {id: addr,
                 rc: rc,
                 name: kind,
@@ -135,9 +135,11 @@ function update() {
 }
 
 function display(nodeMap, filter, depth) {
-  let nodeList = Array.from(nodeMap.values());
   let count = selectNodes(nodeMap, filter, depth);
+  let nodeList = Array.from(nodeMap.values()).filter(d => d.selected);
   let links = getLinks(nodeMap);
+
+  setStatus(`Displaying ${count} out of ${nodeMap.size} nodes`);
 
   let width = Math.max(Math.sqrt(count) * 120, 800);
   let height = width;
@@ -159,13 +161,12 @@ function display(nodeMap, filter, depth) {
       .attr("orient", "auto")
       .attr("markerUnits", "strokeWidth")
 		  .append("path")
-		  .attr("d", "M0,-5L10,0L0,5 Z")
-      .attr("fill", "#999");
+		  .attr("d", "M0,-5L10,0L0,5 Z");
 
   let node = svg.append("g")
       .attr("class", "nodes")
       .selectAll("g")
-      .data(nodeList.filter(d => d.selected))
+      .data(nodeList)
       .enter().append("g")
 
   node.append("circle")
@@ -195,7 +196,7 @@ function display(nodeMap, filter, depth) {
   let simulation = d3.forceSimulation()
       .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(50))
       .force("charge", d3.forceManyBody().strength(-1))
-      .force("collision", d3.forceCollide().radius(30))
+      .force("collision", d3.forceCollide().radius(50))
       .force("center", d3.forceCenter(width / 2, height / 2));
 
   simulation
@@ -247,7 +248,7 @@ function display(nodeMap, filter, depth) {
 
 function selectNodes(nodeMap, filter, maxDepth) {
   if (!maxDepth || Number.isNaN(maxDepth)) {
-    maxDepth = 1;
+    maxDepth = 0;
   }
 
   let count = 0;
@@ -268,6 +269,9 @@ function selectNodes(nodeMap, filter, maxDepth) {
 
   while (worklist.length) {
     let item = worklist.pop();
+    if (item.depth >= maxDepth) {
+      continue;
+    }
     let depth = item.depth + 1;
     for (let info of item.node.children.concat(item.node.parents)) {
       let node = nodeMap.get(info.id);
@@ -277,9 +281,7 @@ function selectNodes(nodeMap, filter, maxDepth) {
       if (!node.selected) {
         count++;
         node.selected = true;
-        if (depth < maxDepth) {
-          worklist.push({node: node, depth: depth});
-        }
+        worklist.push({node: node, depth: depth});
       }
     }
   }
@@ -294,7 +296,8 @@ function getLinks(objects) {
       if (!objects.has(child.id)) {
         throw `Child ${child.id} not found`;
       }
-      if (object.selected && objects.get(child.id).selected) {
+      if (object.selected && objects.get(child.id).selected &&
+          object.id !== child.id) {
         links.push({source: object.id, target: child.id});
       }
     }

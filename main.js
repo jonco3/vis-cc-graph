@@ -103,6 +103,7 @@ function parseLog(data) {
                 name: kind,
                 fullname: line,
                 children: [],
+                parents: [],
                 selected: false};
       if (objects.has(addr)) {
         throw "Duplicate object address: " + line;
@@ -115,6 +116,12 @@ function parseLog(data) {
 
     if (done) {
       break;
+    }
+  }
+
+  for (let object of objects.values()) {
+    for (let info of object.children) {
+      objects.get(info.id).parents.push({id: object.id, name: info.name});
     }
   }
 
@@ -132,7 +139,7 @@ function display(nodeMap, filter, depth) {
   let count = selectNodes(nodeMap, filter, depth);
   let links = getLinks(nodeMap);
 
-  let width = Math.max(Math.sqrt(count) * 120, 200);
+  let width = Math.max(Math.sqrt(count) * 120, 800);
   let height = width;
 
   d3.select("svg").remove();
@@ -262,16 +269,16 @@ function selectNodes(nodeMap, filter, maxDepth) {
   while (worklist.length) {
     let item = worklist.pop();
     let depth = item.depth + 1;
-    for (let obj of item.node.children) {
-      let child = nodeMap.get(obj.id);
-      if (!child) {
-        throw `Missing child {id}`;
+    for (let info of item.node.children.concat(item.node.parents)) {
+      let node = nodeMap.get(info.id);
+      if (!node) {
+        throw `Missing node {id}`;
       }
-      if (!child.selected) {
+      if (!node.selected) {
         count++;
-        child.selected = true;
+        node.selected = true;
         if (depth < maxDepth) {
-          worklist.push({node: child, depth: depth});
+          worklist.push({node: node, depth: depth});
         }
       }
     }

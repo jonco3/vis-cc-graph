@@ -167,32 +167,38 @@ function display(nodeMap, filter, depth) {
   let node = svg.append("g")
       .attr("class", "nodes")
       .selectAll("g")
-      .data(nodeList)
-      .enter().append("g")
+      .data(nodeList);
 
-  node.append("circle")
+  const radius = 10;
+
+  let nodeGroup = node
+      .enter().append("g");
+  nodeGroup.append("circle")
     .attr("r", 5)
     .attr("fill", d => d.rc === -1 ? "#aaaaff" : "#aaffaa")
     .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
-
-  node.append("text")
+  nodeGroup.append("text")
     .text(function(d) { return d.name; })
     .attr('x', 6)
     .attr('y', 3);
-  
-  node.append("title")
+  nodeGroup.append("title")
     .text(function(d) { return d.fullname; });
 
-  var link = svg.append("g")
+  node.exit().remove();
+
+  let link = svg.append("g")
       .attr("class", "links")
       .selectAll("line")
-      .data(links)
+      .data(links);
+  let linkLine = link
       .enter().append("line")
       .attr("stroke", "black")
 		  .attr("marker-end", "url(#arrowhead)");
+
+  link.exit().remove();
 
   let simulation = d3.forceSimulation()
       .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(50))
@@ -209,19 +215,17 @@ function display(nodeMap, filter, depth) {
 
   function ticked() {
     const radius = 10;
-    node
+    nodeGroup
       .attr("cx", function(d) { return d.x = Math.max(radius, Math.min(width - radius, d.x)); })
-      .attr("cy", function(d) { return d.y = Math.max(radius, Math.min(height - radius, d.y)); });
-    link
+      .attr("cy", function(d) { return d.y = Math.max(radius, Math.min(height - radius, d.y)); })
+      .attr("transform", function(d) {
+        return "translate(" + d.x + "," + d.y + ")";
+      })
+    linkLine
       .attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
-
-    node
-      .attr("transform", function(d) {
-        return "translate(" + d.x + "," + d.y + ")";
-      })
   }
 
   function dragstarted(d) {

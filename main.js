@@ -132,10 +132,10 @@ function update() {
   let filter = document.getElementById("filter").value;
   let depth = parseInt(document.getElementById("depth").value);
   selectNodes(data, filter, depth);
-  display(data, filter, depth);
+  display(data);
 }
 
-function display(nodeMap, filter, depth) {
+function display(nodeMap) {
   let nodeList = Array.from(nodeMap.values()).filter(d => d.selected);
   let links = getLinks(nodeMap);
 
@@ -176,6 +176,7 @@ function display(nodeMap, filter, depth) {
   nodeGroup.append("circle")
     .attr("r", 5)
     .attr("fill", d => d.rc === -1 ? "#aaaaff" : "#aaffaa")
+    .on("click", click)
     .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", dragged)
@@ -226,6 +227,33 @@ function display(nodeMap, filter, depth) {
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
+  }
+
+  function click(d) {
+    if (d3.event.defaultPrevented) return; // ignore drag
+
+    let linked = d.children.concat(d.parents);
+    let selected = 0;
+    for (let info of linked) {
+      let node = nodeMap.get(info.id);
+      if (node.selected) {
+        selected++;
+      }
+    }
+
+    let selectOrDeselect = selected < linked.length;
+    for (let info of linked) {
+      let node = nodeMap.get(info.id);
+      if (!selectOrDeselect) {
+        node.selected = false;
+      } else if (!node.selected) {
+        node.selected = true;
+        node.x = d.x;
+        node.y = d.y;
+      }
+    }
+
+    display(nodeMap);
   }
 
   function dragstarted(d) {

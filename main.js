@@ -230,30 +230,52 @@ function display(nodeMap) {
   }
 
   function click(d) {
-    if (d3.event.defaultPrevented) return; // ignore drag
-
-    let linked = d.children.concat(d.parents);
-    let selected = 0;
-    for (let info of linked) {
-      let node = nodeMap.get(info.id);
-      if (node.selected) {
-        selected++;
-      }
+    let e = d3.event;
+    if (e.defaultPrevented) {
+      return; // ignore drag
     }
 
-    let selectOrDeselect = selected < linked.length;
-    for (let info of linked) {
+    if (e.shiftKey) {
+      deselectNode(d);
+    } else {
+      selectRelatedNodes(d);
+    }
+
+    display(nodeMap);
+  }
+
+  function deselectNode(d) {
+    d.selected = false;
+    let related = d.children.concat(d.parents);
+    for (let info of related) {
       let node = nodeMap.get(info.id);
-      if (!selectOrDeselect) {
+      if (!hasSelectedRelatives(node)) {
         node.selected = false;
-      } else if (!node.selected) {
+      }
+    }
+  }
+
+  function hasSelectedRelatives(d) {
+    let related = d.children.concat(d.parents);
+    for (let info of related) {
+      let node = nodeMap.get(info.id);
+      if (node.selected) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function selectRelatedNodes(d) {
+    let related = d.children.concat(d.parents);
+    for (let info of related) {
+      let node = nodeMap.get(info.id);
+      if (!node.selected) {
         node.selected = true;
         node.x = d.x;
         node.y = d.y;
       }
     }
-
-    display(nodeMap);
   }
 
   function dragstarted(d) {

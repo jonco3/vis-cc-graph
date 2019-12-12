@@ -9,6 +9,13 @@
   <body onload="init()">
     <div id="controls">
       <form>
+        <label>Log file:</label>
+        <select id="fileMenu">
+          <option value="small">Demo (small)</option>
+          <option value="large">Demo (large)</option>
+          <option value="upload">Upload file</option>
+        </select>
+        <input id="fileSelect" type="file" accept=".txt, .log" style="display:none">
         <label>Filter:</label>
         <input id="filter" type="text" value="Document"></input>
         <label>Depth:</label>

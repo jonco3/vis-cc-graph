@@ -5,35 +5,88 @@
  */
 
 let data;
-
+let filename;
 let showLabels = true;
-const inputURL = "data.log";
 
 function init() {
-  document.getElementById("update").onclick = function() {
+  document.getElementById("fileMenu").onchange = event => {
+    if (event.target.value === "upload") {
+      document.getElementById("fileSelect").click();
+    } else {
+      load();
+    }
+  };
+  document.getElementById("fileSelect").onchange = () => {
+    load();
+  };
+  document.getElementById("update").onclick = () => {
+    update();
+  };
+  document.getElementById("toggleLabels").onclick = () => {
+    toggleLabels();
+  };
+
+  load();
+}
+
+function load() {
+  for (let element of document.getElementsByTagName("svg")) {
+    element.remove();
+  }
+
+  let name, file;
+  let fileMenu = document.getElementById("fileMenu");
+  let index = fileMenu.selectedIndex;
+  switch (index) {
+  case 0:
+    name = "demo-small.log";
+    break;
+  case 1:
+    name = "demo-large.log";
+    break;
+  case 2:
+    file = document.getElementById("fileSelect").files[0];
+    name = file.name;
+    break;
+  }
+
+  setStatus(`Loading ${name}`);
+
+  let request;
+  if (file) {
+    request = new FileReader();
+    request.onload = () => loaded(request.result);
+  } else {
+    request = new XMLHttpRequest();
+    request.onload = () => loaded(request.responseText);
+  }
+
+  function loaded(text) {
+    filename = name;
+    setStatus(`Loaded ${name}`);
+    try {
+      data = parseLog(text);
+    } catch (e) {
+      setStatus(`Error parsing ${name}: ${e}`);
+      throw e;
+    }
     update();
   }
-  document.getElementById("toggleLabels").onclick = function() {
-    toggleLabels();
-  }
   
-  setStatus(`Loading ${inputURL}`);
-
-  const request = new XMLHttpRequest();
   request.onerror = function (event) {
-    setStatus(`Error loading ${inputURL}: ${event.message}`);
+    setStatus(`Error loading ${name}: ${event.message}`);
   }
   request.onprogress = function (event) {
     const percent = Math.floor(100 * event.loaded / event.total);
     setStatus(`Loading ${percent}%`);
   }
-  request.onload = function loaded() {
-    setStatus(`Loaded`);
-    data = parseLog(this.responseText);
-    update();
+
+  if (file) {
+    request.readAsText(file);
+  } else {
+    request.open("GET", name);
+    request.send();
   }
-  request.open("GET", inputURL);
-  request.send();
 }
 
 function setStatus(message) {
@@ -150,7 +203,7 @@ function display(nodeMap) {
   let links = getLinks(nodeMap);
 
   let count = nodeList.length;
-  setStatus(`Displaying ${count} out of ${nodeMap.size} nodes`);
+  setStatus(`Displaying ${count} out of ${nodeMap.size} nodes of ${filename}`);
 
   let width = Math.max(Math.sqrt(count) * 120, 800);
   let height = width;

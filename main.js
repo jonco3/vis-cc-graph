@@ -164,12 +164,23 @@ function display(nodeMap) {
 		  .append("path")
 		  .attr("d", "M0,-5L10,0L0,5 Z");
 
+  let link = svg.append("g")
+      .attr("class", "links")
+      .selectAll("line")
+      .data(links);
+  let linkLine = link
+      .enter().append("line")
+      .attr("stroke", "black")
+		  .attr("marker-end", "url(#arrowhead)");
+
+  link.exit().remove();
+
+  const radius = 10;
+
   let node = svg.append("g")
       .attr("class", "nodes")
       .selectAll("g")
       .data(nodeList);
-
-  const radius = 10;
 
   let nodeGroup = node
       .enter().append("g");
@@ -189,17 +200,6 @@ function display(nodeMap) {
     .text(function(d) { return d.fullname; });
 
   node.exit().remove();
-
-  let link = svg.append("g")
-      .attr("class", "links")
-      .selectAll("line")
-      .data(links);
-  let linkLine = link
-      .enter().append("line")
-      .attr("stroke", "black")
-		  .attr("marker-end", "url(#arrowhead)");
-
-  link.exit().remove();
 
   let simulation = d3.forceSimulation()
       .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(50))

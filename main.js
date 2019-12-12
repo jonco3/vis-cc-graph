@@ -6,11 +6,15 @@
 
 let data;
 
+let showLabels = true;
 const inputURL = "data.log";
 
 function init() {
   document.getElementById("update").onclick = function() {
     update();
+  }
+  document.getElementById("toggleLabels").onclick = function() {
+    toggleLabels();
   }
   
   setStatus(`Loading ${inputURL}`);
@@ -135,6 +139,12 @@ function update() {
   display(data);
 }
 
+function toggleLabels() {
+  showLabels = !showLabels;
+  display(data);
+  document.getElementById("toggleLabels").value = `${showLabels ? "Hide" : "Show"} labels`;
+}
+
 function display(nodeMap) {
   let nodeList = Array.from(nodeMap.values()).filter(d => d.selected);
   let links = getLinks(nodeMap);
@@ -192,10 +202,12 @@ function display(nodeMap) {
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
-  nodeGroup.append("text")
-    .text(function(d) { return d.name; })
-    .attr('x', 6)
-    .attr('y', 3);
+  if (showLabels) {
+    nodeGroup.append("text")
+      .text(function(d) { return d.name; })
+      .attr('x', 6)
+      .attr('y', 3);
+  }
   nodeGroup.append("title")
     .text(function(d) { return d.fullname; });
 

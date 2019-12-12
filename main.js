@@ -33,7 +33,7 @@ function init() {
 }
 
 function setStatus(message) {
-  document.getElementById("status").textContent = message;
+  document.getElementById("message").textContent = `Status: ${message}`;
 }
 
 function parseLog(data) {

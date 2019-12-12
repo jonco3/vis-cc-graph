@@ -7,16 +7,18 @@
     <script src="main.js"></script>
   </head>
   <body onload="init()">
-    <div>
+    <div id="controls">
       <form>
         <label>Filter:</label>
         <input id="filter" type="text" value="Document"></input>
         <label>Depth:</label>
         <input id="depth" type="text" value="0"></input>
         <input id="update" type="button" value="Update"></input>
-        <label>Status:</label>
-        <span id="status"></span>
       </form>
+    </div>
+    <div id="main"></div>
+    <div id="status">
+      <span id="message"></span>
     </div>
   </body>
 </html>

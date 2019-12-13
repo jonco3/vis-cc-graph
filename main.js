@@ -39,7 +39,7 @@ function load() {
   let index = fileMenu.selectedIndex;
   switch (index) {
   case 0:
-    name = "demo-graph.log";
+    name = "demo-graph.log.gz";
     break;
   case 1:
     file = document.getElementById("fileSelect").files[0];
@@ -49,41 +49,82 @@ function load() {
 
   setStatus(`Loading ${name}`);
 
-  let request;
-  if (file) {
-    request = new FileReader();
-    request.onload = () => loaded(request.result);
-  } else {
-    request = new XMLHttpRequest();
-    request.onload = () => loaded(request.responseText);
-  }
+  let isCompressed = name.endsWith(".gz");
 
-  function loaded(text) {
-    filename = name;
-    setStatus(`Loaded ${name}`);
-    try {
-      data = parseLog(text);
-    } catch (e) {
-      setStatus(`Error parsing ${name}: ${e}`);
-      throw e;
-    }
-    update();
+  if (file) {
+    loadFromUser(file, name, isCompressed);
+  } else {
+    loadFromWeb(name, isCompressed);
   }
-  
-  request.onerror = function (event) {
+}
+
+function loadFromUser(file, name, isCompressed) {
+  let request = new FileReader();
+  request.onerror = event => {
     setStatus(`Error loading ${name}: ${event.message}`);
-  }
-  request.onprogress = function (event) {
+  };
+  request.onprogress = event => {
     const percent = Math.floor(100 * event.loaded / event.total);
     setStatus(`Loading ${percent}%`);
-  }
-
-  if (file) {
-    request.readAsText(file);
+  };
+  request.onload = () => {
+    if (isCompressed) {
+      decompress(name, request.result);
+    } else {
+      loaded(name, request.result);
+    }
+  };
+  if (isCompressed) {
+    request.readAsArrayBuffer(file);
   } else {
-    request.open("GET", name);
-    request.send();
+    request.readAsText(file);
   }
+}
+
+function loadFromWeb(name, isCompressed) {
+  let request = new XMLHttpRequest();
+  request.onerror = event => {
+    setStatus(`Error loading ${name}: ${event.message}`);
+  };
+  request.onprogress = event => {
+    const percent = Math.floor(100 * event.loaded / event.total);
+    setStatus(`Loading ${percent}%`);
+  };
+  request.onload = () => {
+    if (isCompressed) {
+      decompress(name, request.response);
+    } else {
+      loaded(name, request.responseText);
+    }
+  };
+  request.open("GET", name);
+  if (isCompressed) {
+    request.responseType = "arraybuffer";
+  }
+  request.send();
+}
+
+function decompress(name, compressedData) {
+  let text;
+  try {
+    text = pako.inflate(compressedData, { to: 'string' });
+  } catch (e) {
+    setStatus(`Error decompressing ${name}: ${e}`);
+    throw e;
+  }
+  loaded(name, text);
+}
+
+function loaded(name, text) {
+  filename = name;
+  setStatus(`Loaded ${name}`);
+  try {
+    data = parseLog(text);
+  } catch (e) {
+    setStatus(`Error parsing ${name}: ${e}`);
+    throw e;
+  }
+  update();
 }
 
 function setStatus(message) {

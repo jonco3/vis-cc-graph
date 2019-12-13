@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <link type="text/css" rel="stylesheet" href="style.css"/>
     <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="vendor/pako.js"></script>
     <script src="main.js"></script>
   </head>
   <body onload="init()">
@@ -14,7 +15,7 @@
           <option value="demo">Demo graph</option>
           <option value="upload">Upload file</option>
         </select>
-        <input id="fileSelect" type="file" accept=".txt, .log" style="display:none">
+        <input id="fileSelect" type="file" accept=".txt, .log, .gz" style="display:none">
         <label>Filter:</label>
         <input id="filter" type="text" value="Document"></input>
         <label>Depth:</label>

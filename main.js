@@ -39,12 +39,9 @@ function load() {
   let index = fileMenu.selectedIndex;
   switch (index) {
   case 0:
-    name = "demo-small.log";
+    name = "demo-graph.log";
     break;
   case 1:
-    name = "demo-large.log";
-    break;
-  case 2:
     file = document.getElementById("fileSelect").files[0];
     name = file.name;
     break;
@@ -205,7 +202,7 @@ function display(nodeMap) {
   let count = nodeList.length;
   setStatus(`Displaying ${count} out of ${nodeMap.size} nodes of ${filename}`);
 
-  let width = Math.max(Math.sqrt(count) * 120, 800);
+  let width = Math.max(Math.sqrt(count) * 80, 800);
   let height = width;
 
   d3.select("svg").remove();

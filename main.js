@@ -226,7 +226,8 @@ function parseLog(data) {
 function update() {
   let filter = document.getElementById("filter").value;
   let depth = parseInt(document.getElementById("depth").value);
-  selectNodes(data, filter, depth);
+  let limit = parseInt(document.getElementById("limit").value);
+  selectNodes(data, filter, depth, limit);
   display(data);
 }
 
@@ -404,7 +405,7 @@ function display(nodeMap) {
   }
 }
 
-function selectNodes(nodeMap, filter, maxDepth) {
+function selectNodes(nodeMap, filter, maxDepth, limit) {
   if (!filter) {
     filter = "";
   }
@@ -413,19 +414,24 @@ function selectNodes(nodeMap, filter, maxDepth) {
     maxDepth = 0;
   }
 
-  if (!filter) {
-    for (let d of nodeMap.values()) {
-      d.selected = true;
-    }
-    return;
+  if (!limit || Number.isNaN(limit)) {
+    limit = 2000;
   }
 
+  let count = 0;
   let worklist = [];
   for (let d of nodeMap.values()) {
-    d.selected = d.name.includes(filter);
+    d.selected = d.name.includes(filter) && count < limit;
     if (d.selected) {
-      worklist.push({node: d, depth: 0});
+      count++;
+      if (filter) {
+        worklist.push({node: d, depth: 0});
+      }
     }
+  }
+
+  if (!filter || count === limit) {
+    return;
   }
 
   while (worklist.length) {
@@ -441,6 +447,10 @@ function selectNodes(nodeMap, filter, maxDepth) {
       }
       if (!node.selected) {
         node.selected = true;
+        count++;
+        if (count >= limit) {
+          return;
+        }
         worklist.push({node: node, depth: depth});
       }
     }

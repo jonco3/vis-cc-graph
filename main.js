@@ -181,8 +181,21 @@ function parseLog(data) {
       if (Number.isNaN(addr)) {
         throw "Can't parse address: " + line;
       }
-      let rc = -1; // => GC object.
-      if (!words[1].startsWith("[gc")) {
+      let rc;
+      let kind;
+      if (words[1].startsWith("[gc")) {
+        rc = -1; // => JS GC object.
+        kind = words[3];
+        if (kind === "Object") {
+          kind = words[4];
+          if (kind.startsWith('(')) {
+            kind = kind.substr(1);
+          }
+          if (kind.endsWith(')')) {
+            kind = kind.substr(0, kind.length - 1);
+          }
+        }
+      } else {
         let match = words[1].match(/^\[rc=(\d+)\]$/);
         if (!match) {
           throw "Can't parse refcount word: " + line;
@@ -191,8 +204,8 @@ function parseLog(data) {
         if (Number.isNaN(rc)) {
           throw "Can't parse refcount number: " + match[1];
         }
+        kind = words[2];
       }
-      let kind = words[2];
       object = {id: addr,
                 rc: rc,
                 name: kind,
@@ -423,7 +436,7 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
   let count = 0;
   let worklist = [];
   for (let d of nodeMap.values()) {
-    d.selected = d.name.includes(filter) && count < limit;
+    d.selected = d.name === filter && count < limit;
     if (d.selected) {
       count++;
       if (filter) {

@@ -226,9 +226,11 @@ function parseLog(data) {
 function update() {
   let filter = document.getElementById("filter").value;
   let depth = parseInt(document.getElementById("depth").value);
+  let incoming = document.getElementById("incoming").checked;
+  let outgoing = document.getElementById("outgoing").checked;
   let limit = parseInt(document.getElementById("limit").value);
-  selectNodes(data, filter, depth, limit);
-  display(data);
+  selectNodes(data, filter, depth, incoming, outgoing, limit);
+  display(data, incoming, outgoing);
 }
 
 function toggleLabels() {
@@ -350,7 +352,7 @@ function display(nodeMap) {
 
   function deselectNode(d) {
     d.selected = false;
-    let related = d.children.concat(d.parents);
+    let related = getRelatedNodes(d, incoming, outgoing);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (!hasSelectedRelatives(node)) {
@@ -360,7 +362,7 @@ function display(nodeMap) {
   }
 
   function hasSelectedRelatives(d) {
-    let related = d.children.concat(d.parents);
+    let related = getRelatedNodes(d, incoming, outgoing);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (node.selected) {
@@ -371,7 +373,7 @@ function display(nodeMap) {
   }
 
   function selectRelatedNodes(d) {
-    let related = d.children.concat(d.parents);
+    let related = getRelatedNodes(d, incoming, outgoing);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (!node.selected) {
@@ -405,7 +407,7 @@ function display(nodeMap) {
   }
 }
 
-function selectNodes(nodeMap, filter, maxDepth, limit) {
+function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
   if (!filter) {
     filter = "";
   }
@@ -436,11 +438,13 @@ function selectNodes(nodeMap, filter, maxDepth, limit) {
 
   while (worklist.length) {
     let item = worklist.pop();
-    if (item.depth >= maxDepth) {
+    let depth = item.depth + 1;
+    if (depth > maxDepth) {
       continue;
     }
-    let depth = item.depth + 1;
-    for (let info of item.node.children.concat(item.node.parents)) {
+
+    let related = getRelatedNodes(item.node, incoming, outgoing);
+    for (let info of related) {
       let node = nodeMap.get(info.id);
       if (!node) {
         throw `Missing node {id}`;
@@ -455,6 +459,17 @@ function selectNodes(nodeMap, filter, maxDepth, limit) {
       }
     }
   }
+}
+
+function getRelatedNodes(node, incoming, outgoing) {
+  let related = [];
+  if (incoming) {
+    related = related.concat(node.parents);
+  }
+  if (outgoing) {
+    related = related.concat(node.children);
+  }
+  return related;
 }
 
 function getLinks(objects) {

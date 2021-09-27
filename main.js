@@ -253,7 +253,7 @@ function toggleLabels() {
 }
 
 function display(nodeMap, nodeList) {
-  let links = getLinks(nodeMap);
+  let links = getLinks(nodeMap, nodeList);
 
   let count = nodeList.length;
   setStatus(`Displaying ${count} out of ${nodeMap.size} nodes of ${filename}`);
@@ -490,14 +490,11 @@ function getRelatedNodes(node, incoming, outgoing) {
   return related;
 }
 
-function getLinks(objects) {
+function getLinks(objects, selected) {
   let links = [];
-  for (let object of objects.values()) {
+  for (let object of selected) {
     for (let child of object.children) {
-      if (!objects.has(child.id)) {
-        throw `Child ${child.id} not found`;
-      }
-      if (object.selected && objects.get(child.id).selected &&
+      if (objects.get(child.id).selected &&
           object.id !== child.id) {
         links.push({source: object.id, target: child.id});
       }

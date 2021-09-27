@@ -160,7 +160,7 @@ function parseLog(data) {
         throw "Can't parse address: " + line;
       }
       let kind = words.slice(2).join(" ");
-      object.children.push({id: addr, name: kind});
+      object.outgoingEdges.push({id: addr, name: kind});
       break;
     }
 
@@ -210,8 +210,8 @@ function parseLog(data) {
                 rc: rc,
                 name: kind,
                 fullname: line,
-                children: [],
-                parents: [],
+                incomingEdges: [],
+                outgoingEdges: [],
                 selected: false};
       if (objects.has(addr)) {
         throw "Duplicate object address: " + line;
@@ -228,8 +228,8 @@ function parseLog(data) {
   }
 
   for (let object of objects.values()) {
-    for (let info of object.children) {
-      objects.get(info.id).parents.push({id: object.id, name: info.name});
+    for (let info of object.outgoingEdges) {
+      objects.get(info.id).incomingEdges.push({id: object.id, name: info.name});
     }
   }
 
@@ -482,10 +482,10 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
 function getRelatedNodes(node, incoming, outgoing) {
   let related = [];
   if (incoming) {
-    related = related.concat(node.parents);
+    related = related.concat(node.incomingEdges);
   }
   if (outgoing) {
-    related = related.concat(node.children);
+    related = related.concat(node.outgoingEdges);
   }
   return related;
 }
@@ -493,10 +493,10 @@ function getRelatedNodes(node, incoming, outgoing) {
 function getLinks(objects, selected) {
   let links = [];
   for (let object of selected) {
-    for (let child of object.children) {
-      if (objects.get(child.id).selected &&
-          object.id !== child.id) {
-        links.push({source: object.id, target: child.id});
+    for (let edge of object.outgoingEdges) {
+      if (objects.get(edge.id).selected &&
+          object.id !== edge.id) {
+        links.push({source: object.id, target: edge.id});
       }
     }
   }

@@ -242,8 +242,8 @@ function update() {
   let incoming = document.getElementById("incoming").checked;
   let outgoing = document.getElementById("outgoing").checked;
   let limit = parseInt(document.getElementById("limit").value);
-  selectNodes(data, filter, depth, incoming, outgoing, limit);
-  display(data, incoming, outgoing);
+  let nodeList = selectNodes(data, filter, depth, incoming, outgoing, limit);
+  display(data, nodeList, incoming, outgoing);
 }
 
 function toggleLabels() {
@@ -252,8 +252,7 @@ function toggleLabels() {
   document.getElementById("toggleLabels").value = `${showLabels ? "Hide" : "Show"} labels`;
 }
 
-function display(nodeMap) {
-  let nodeList = Array.from(nodeMap.values()).filter(d => d.selected);
+function display(nodeMap, nodeList) {
   let links = getLinks(nodeMap);
 
   let count = nodeList.length;
@@ -421,6 +420,8 @@ function display(nodeMap) {
 }
 
 function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
+  let selected = [];
+
   if (!filter) {
     filter = "";
   }
@@ -433,20 +434,22 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
     limit = 2000;
   }
 
-  let count = 0;
   let worklist = [];
   for (let d of nodeMap.values()) {
-    d.selected = d.name === filter && count < limit;
+    d.selected = d.name === filter;
     if (d.selected) {
-      count++;
+      selected.push(d);
+      if (selected.length === limit) {
+        return selected;
+      }
       if (filter) {
         worklist.push({node: d, depth: 0});
       }
     }
   }
 
-  if (!filter || count === limit) {
-    return;
+  if (!filter) {
+    return selected;
   }
 
   while (worklist.length) {
@@ -464,14 +467,16 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
       }
       if (!node.selected) {
         node.selected = true;
-        count++;
-        if (count >= limit) {
-          return;
+        selected.push(node);
+        if (selected.length === limit) {
+          return selected;
         }
         worklist.push({node: node, depth: depth});
       }
     }
   }
+
+  return selected;
 }
 
 function getRelatedNodes(node, incoming, outgoing) {

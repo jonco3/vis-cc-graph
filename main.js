@@ -4,7 +4,8 @@
  * Visualise cycle collector graphs.
  */
 
-let data;
+let nodeMap;
+let selectedNodes;
 let filename;
 let showLabels = true;
 
@@ -119,7 +120,7 @@ function decompress(name, compressedData) {
 function loaded(name, text) {
   filename = name;
   try {
-    data = parseLog(text);
+    nodeMap = parseLog(text);
   } catch (e) {
     setStatus(`Error parsing ${name}: ${e}`);
     throw e;
@@ -147,14 +148,14 @@ function setStatus(message) {
   lastStatus = message;
 }
 
-function parseLog(data) {
+function parseLog(text) {
   setStatus(`Parsing log file`);
 
   let objects = new Map();
   let object;
   let done = false;
 
-  for (let line of data.split("\n")) {
+  for (let line of text.split("\n")) {
     if (line === "" || line.startsWith("#")) {
       continue;
     }
@@ -261,15 +262,15 @@ function update() {
   let incoming = document.getElementById("incoming").checked;
   let outgoing = document.getElementById("outgoing").checked;
   let limit = parseInt(document.getElementById("limit").value);
-  let nodeList = selectNodes(data, filter, depth, incoming, outgoing, limit);
-  display(data, nodeList, incoming, outgoing);
-  setStatus(`Displaying ${nodeList.length} out of ${data.size} nodes of ${filename}`);
+  selectedNodes = selectNodes(nodeMap, filter, depth, incoming, outgoing, limit);
+  display(nodeMap, selectedNodes, incoming, outgoing);
+  setStatus(`Displaying ${selectedNodes.length} out of ${nodeMap.size} nodes of ${filename}`);
   lastStatus = undefined;
 }
 
 function toggleLabels() {
   showLabels = !showLabels;
-  display(data);
+  display(nodeMap, selectedNodes);
   document.getElementById("toggleLabels").value = `${showLabels ? "Hide" : "Show"} labels`;
 }
 
@@ -378,7 +379,7 @@ function display(nodeMap, nodeList) {
       selectRelatedNodes(d);
     }
 
-    display(nodeMap);
+    display(nodeMap, nodeList);
   }
 
   function deselectNode(d) {

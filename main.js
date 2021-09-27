@@ -105,6 +105,7 @@ function loadFromWeb(name, isCompressed) {
 }
 
 function decompress(name, compressedData) {
+  setStatus(`Decompressing ${name}`);
   let text;
   try {
     text = pako.inflate(compressedData, { to: 'string' });
@@ -117,7 +118,6 @@ function decompress(name, compressedData) {
 
 function loaded(name, text) {
   filename = name;
-  setStatus(`Loaded ${name}`);
   try {
     data = parseLog(text);
   } catch (e) {
@@ -127,11 +127,29 @@ function loaded(name, text) {
   update();
 }
 
+let lastStatus;
+let startTime;
+
 function setStatus(message) {
   document.getElementById("message").textContent = `Status: ${message}`;
+
+  if (message.endsWith("%")) {
+    return;
+  }
+
+  let time = performance.now();
+  if (lastStatus) {
+    let duration = time - startTime;
+    console.log(`${lastStatus} (${duration} ms)`);
+  }
+
+  startTime = time;
+  lastStatus = message;
 }
 
 function parseLog(data) {
+  setStatus(`Parsing log file`);
+
   let objects = new Map();
   let object;
   let done = false;
@@ -237,6 +255,7 @@ function parseLog(data) {
 }
 
 function update() {
+  setStatus(`Building display`);
   let filter = document.getElementById("filter").value;
   let depth = parseInt(document.getElementById("depth").value);
   let incoming = document.getElementById("incoming").checked;
@@ -244,6 +263,8 @@ function update() {
   let limit = parseInt(document.getElementById("limit").value);
   let nodeList = selectNodes(data, filter, depth, incoming, outgoing, limit);
   display(data, nodeList, incoming, outgoing);
+  setStatus(`Displaying ${nodeList.length} out of ${data.size} nodes of ${filename}`);
+  lastStatus = undefined;
 }
 
 function toggleLabels() {
@@ -256,8 +277,6 @@ function display(nodeMap, nodeList) {
   let links = getLinks(nodeMap, nodeList);
 
   let count = nodeList.length;
-  setStatus(`Displaying ${count} out of ${nodeMap.size} nodes of ${filename}`);
-
   let width = Math.max(Math.sqrt(count) * 80, 800);
   let height = width;
 

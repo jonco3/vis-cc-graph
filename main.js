@@ -174,6 +174,7 @@ function parseLog(text) {
         throw "Can't parse address: " + line;
       }
       let kind = words.slice(2).join(" ");
+      kind = internString(kind);
       object.outgoingEdges.push({id: addr, name: kind});
       break;
     }
@@ -211,6 +212,7 @@ function parseLog(text) {
         }
         kind = words[2];
       }
+      kind = internString(kind);
       object = {id: addr,
                 rc: rc,
                 name: kind,
@@ -239,6 +241,18 @@ function parseLog(text) {
   }
 
   return objects;
+}
+
+let strings = new Map();
+
+function internString(s) {
+  let result = strings.get(s);
+  if (result !== undefined) {
+    return result;
+  }
+
+  strings.set(s, s);
+  return s;
 }
 
 function update() {

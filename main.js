@@ -279,6 +279,7 @@ function internString(s) {
 
 function update() {
   setStatus(`Building display`);
+  closeInspector();
   config = readConfig();
   let selectedCount = selectNodes();
   display();

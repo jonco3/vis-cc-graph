@@ -346,7 +346,7 @@ function display() {
       .enter().append("g");
   nodeGroup.append("circle")
     .attr("r", 5)
-    .attr("fill", d => d.rc === -1 ? "#aaaaff" : "#aaffaa")
+    .attr("fill", fillColor)
     .on("click", click)
     .call(d3.drag()
           .on("start", dragstarted)
@@ -375,6 +375,18 @@ function display() {
 
   simulation.force("link")
     .links(links);
+
+  function fillColor(d) {
+    if (d.root) {
+      return "#ffaaaa";
+    }
+
+    if (d.rc === -1) {
+      return "#aaaaff"; // GC thing.
+    }
+
+    return "#aaffaa"; // CC thing.
+  }
 
   function ticked() {
     const radius = 10;
@@ -467,6 +479,7 @@ function selectNodes() {
   let count = 0;
   let selected = [];
   nodeMap.forEach(d => {
+    d.roots = false;
     d.selected = !filter || d.name === config.filter;
     if (d.selected) {
       count++;
@@ -521,6 +534,7 @@ function selectRoots(selected, count) {
 
       if (node.incomingEdges.length === 0) {
         // Found a root, select nodes on its path.
+        node.root = true;
         do {
           node.selected = true;
           count++;

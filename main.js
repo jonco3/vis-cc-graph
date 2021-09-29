@@ -137,8 +137,11 @@ function parseLog(text) {
   let object;
   let done = false;
 
-  for (let line of text.split("\n")) {
-    if (line === "" || line.startsWith("#")) {
+  const lineRegExp = /[^\n]+/g;
+
+  for (let match of text.matchAll(lineRegExp)) {
+    let line = match[0];
+    if (line.startsWith("#")) {
       continue;
     }
     let words = line.split(" ");

@@ -21,6 +21,9 @@ function init() {
   document.getElementById("toggleLabels").onclick = () => {
     toggleLabels();
   };
+  document.getElementById("inspectorClose").onclick = () => {
+    closeInspector();
+  };
 
   loadFromWeb("demo-graph.log.gz", true);
 }
@@ -433,47 +436,8 @@ function display() {
       return; // ignore drag
     }
 
-    if (e.shiftKey) {
-      deselectNode(d);
-    } else {
-      selectRelatedNodes(d);
-    }
-
-    display();
-  }
-
-  function deselectNode(d) {
-    d.selected = false;
-    let related = getRelatedNodes(d);
-    for (let id of related) {
-      let node = nodes[id];
-      if (!hasSelectedRelatives(node)) {
-        node.selected = false;
-      }
-    }
-  }
-
-  function hasSelectedRelatives(d) {
-    let related = getRelatedNodes(d);
-    for (let id of related) {
-      let node = nodes[id];
-      if (node.selected) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function selectRelatedNodes(d) {
-    let related = getRelatedNodes(d);
-    for (let id of related) {
-      let node = nodes[id];
-      if (!node.selected) {
-        node.selected = true;
-        node.x = d.x;
-        node.y = d.y;
-      }
-    }
+    populateInspector(d);
+    openInspector();
   }
 
   function dragstarted(d) {
@@ -487,7 +451,6 @@ function display() {
   function dragged(d) {
     d.fx = d3.event.x;
     d.fy = d3.event.y;
-
   }
 
   function dragended(d) {
@@ -497,6 +460,101 @@ function display() {
       simulation.alphaTarget(0);
     }
   }
+}
+
+function openInspector() {
+  document.getElementById("inspector").style.width = "320px";
+}
+
+function closeInspector() {
+  document.getElementById("inspector").style.width = "0";
+}
+
+function populateInspector(node) {
+  let inspector = document.getElementById("inspectorContent");
+  while (inspector.hasChildNodes()) {
+    inspector.removeChild(inspector.lastChild);
+  }
+
+  const maxEdges = 5;
+
+  addInspectorLine(inspector, node.fullname);
+  if (node.incomingEdges.length) {
+    addInspectorLine(inspector, "Incoming edges:");
+    for (let i = 0; i < Math.min(node.incomingEdges.length, maxEdges); i++) {
+      let target = nodes[node.incomingEdges[i]];
+      let addr = target.address.toString(16);
+      addInspectorLine(inspector, `  0x${addr} ${target.name}`);
+    }
+    if (node.incomingEdges.length > maxEdges) {
+      addInspectorLine(inspector, "  ...");
+    }
+  }
+  if (node.outgoingEdges.length) {
+    addInspectorLine(inspector, "Outgoing edges:");
+    for (let i = 0; i < Math.min(node.outgoingEdges.length, maxEdges); i++) {
+      let source = nodes[node.outgoingEdges[i]];
+      let addr = source.address.toString(16);
+      addInspectorLine(inspector, `  0x${addr} ${source.name}`);
+    }
+    if (node.outgoingEdges.length > maxEdges) {
+      addInspectorLine(inspector, "  ...");
+    }
+  }
+
+  addInspectorButton(inspector, "Hide", () => deselectNode(node));
+  addInspectorButton(inspector, "Show related", () => selectRelatedNodes(node));
+}
+
+function addInspectorLine(inspector, text) {
+  let pre = document.createElement("pre");
+  pre.textContent = text;
+  inspector.appendChild(pre);
+}
+
+function addInspectorButton(inspector, label, handler) {
+  let input = document.createElement("input");
+  input.type = "button";
+  input.value = label;
+  input.onclick = handler;
+  inspector.appendChild(input);
+}
+
+function deselectNode(d) {
+  d.selected = false;
+  let related = getRelatedNodes(d);
+  for (let id of related) {
+    let node = nodes[id];
+    if (!hasSelectedRelatives(node)) {
+      node.selected = false;
+    }
+  }
+  display();
+  closeInspector();
+}
+
+function hasSelectedRelatives(d) {
+  let related = getRelatedNodes(d);
+  for (let id of related) {
+    let node = nodes[id];
+    if (node.selected) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function selectRelatedNodes(d) {
+  let related = getRelatedNodes(d);
+  for (let id of related) {
+    let node = nodes[id];
+    if (!node.selected) {
+      node.selected = true;
+      node.x = d.x;
+      node.y = d.y;
+    }
+  }
+  display();
 }
 
 function selectNodes() {

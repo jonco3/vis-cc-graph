@@ -5,7 +5,6 @@
  */
 
 let nodeMap;
-let selectedNodes;
 let filename;
 let showLabels = true;
 
@@ -262,19 +261,20 @@ function update() {
   let incoming = document.getElementById("incoming").checked;
   let outgoing = document.getElementById("outgoing").checked;
   let limit = parseInt(document.getElementById("limit").value);
-  selectedNodes = selectNodes(nodeMap, filter, depth, incoming, outgoing, limit);
-  display(nodeMap, selectedNodes, incoming, outgoing);
-  setStatus(`Displaying ${selectedNodes.length} out of ${nodeMap.size} nodes of ${filename}`);
+  let selectedCount = selectNodes(nodeMap, filter, depth, incoming, outgoing, limit);
+  display(nodeMap, incoming, outgoing);
+  setStatus(`Displaying ${selectedCount} out of ${nodeMap.size} nodes of ${filename}`);
   lastStatus = undefined;
 }
 
 function toggleLabels() {
   showLabels = !showLabels;
-  display(nodeMap, selectedNodes);
+  display(nodeMap);
   document.getElementById("toggleLabels").value = `${showLabels ? "Hide" : "Show"} labels`;
 }
 
-function display(nodeMap, nodeList) {
+function display(nodeMap) {
+  let nodeList = getSelectedNodes(nodeMap);
   let links = getLinks(nodeMap, nodeList);
 
   let count = nodeList.length;
@@ -379,7 +379,7 @@ function display(nodeMap, nodeList) {
       selectRelatedNodes(d);
     }
 
-    display(nodeMap, nodeList);
+    display(nodeMap);
   }
 
   function deselectNode(d) {
@@ -440,8 +440,6 @@ function display(nodeMap, nodeList) {
 }
 
 function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
-  let selected = [];
-
   if (!filter) {
     filter = "";
   }
@@ -454,13 +452,14 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
     limit = 2000;
   }
 
+  let count = 0;
   let worklist = [];
   nodeMap.forEach(d => {
     d.selected = d.name === filter;
     if (d.selected) {
-      selected.push(d);
-      if (selected.length === limit) {
-        return selected;
+      count++;
+      if (count === limit) {
+        return count;
       }
       if (filter) {
         worklist.push({node: d, depth: 0});
@@ -469,7 +468,7 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
   });
 
   if (!filter) {
-    return selected;
+    return count;
   }
 
   while (worklist.length) {
@@ -487,15 +486,24 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
       }
       if (!node.selected) {
         node.selected = true;
-        selected.push(node);
-        if (selected.length === limit) {
-          return selected;
+        count++;
+        if (count === limit) {
+          return count;
         }
         worklist.push({node: node, depth: depth});
       }
     }
   }
 
+  return count;
+}
+
+function getSelectedNodes(nodeMap) {
+  let selected = [];
+  nodeMap.forEach(node => {
+    if (node.selected) {
+      selected.push(node);
+    }});
   return selected;
 }
 

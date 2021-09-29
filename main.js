@@ -6,14 +6,7 @@
 
 let nodeMap;
 let filename;
-let config = {
-  filter: "",
-  maxDepth: 1,
-  incoming: true,
-  outgoing: true,
-  limit: 2000,
-  showLabels: true
-};
+let config;
 
 function init() {
   document.getElementById("upload").onclick = event => {
@@ -276,6 +269,8 @@ function readConfig() {
     filter = "";
   }
 
+  let roots = document.getElementById("roots").checked;
+
   let maxDepth = parseInt(document.getElementById("depth").value);
   if (!maxDepth || Number.isNaN(maxDepth)) {
     maxDepth = 0;
@@ -292,7 +287,7 @@ function readConfig() {
   let showLabels =
       document.getElementById("toggleLabels").value.startsWith("Hide");
 
-  return {filter, maxDepth, incoming, outgoing, limit, showLabels};
+  return {filter, roots, maxDepth, incoming, outgoing, limit, showLabels};
 }
 
 function toggleLabels() {
@@ -470,16 +465,16 @@ function display() {
 
 function selectNodes() {
   let count = 0;
-  let worklist = [];
+  let selected = [];
   nodeMap.forEach(d => {
-    d.selected = d.name === config.filter;
+    d.selected = !filter || d.name === config.filter;
     if (d.selected) {
       count++;
       if (count === config.limit) {
         return count;
       }
       if (config.filter) {
-        worklist.push({node: d, depth: 0});
+        selected.push(d);
       }
     }
   });
@@ -487,6 +482,72 @@ function selectNodes() {
   if (!config.filter) {
     return count;
   }
+
+  if (config.roots) {
+    count = selectRoots(selected, count);
+    if (count === config.limit) {
+      return count;
+    }
+  }
+
+  if (config.incoming || config.outgoing) {
+    count = selectRelated(selected, count);
+    if (count === config.limit) {
+      return count;
+    }
+  }
+
+  return count;
+}
+
+function selectRoots(selected, count) {
+  // Perform a DFS from each initially selected node to the roots, selecting
+  // nodes along the paths found.
+
+  for (let start of selected) {
+    console.log(`find roots for ${start.fullname}`);
+
+    let visited = new Set();
+
+    let worklist = [{node: start, path: null}];
+
+    while (worklist.length) {
+      let {node, path} = worklist.pop();
+
+      if (visited.has(node.id)) {
+        continue;
+      }
+      visited.add(node.id);
+
+      if (node.incomingEdges.length === 0) {
+        // Found a root, select nodes on its path.
+        do {
+          node.selected = true;
+          count++;
+          if (count === config.limit) {
+            return count;
+          }
+
+          if (path) {
+            node = path.node;
+            path = path.next;
+          }
+        } while (path)
+      } else {
+        // Queue incoming nodes.
+        path = {node, next: path};
+        for (let edge of node.incomingEdges) {
+          worklist.push({node: nodeMap.get(edge.id), path});
+        }
+      }
+    }
+  }
+
+  return count;
+}
+
+function selectRelated(selected, count) {
+  let worklist = selected.map(node => ({node, depth: 0}));
 
   while (worklist.length) {
     let item = worklist.pop();

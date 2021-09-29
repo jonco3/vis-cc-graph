@@ -377,6 +377,10 @@ function display() {
     .links(links);
 
   function fillColor(d) {
+    if (d.filtered) {
+      return "#ffee99";
+    }
+
     if (d.root) {
       return "#ffaaaa";
     }
@@ -479,9 +483,13 @@ function selectNodes() {
   let count = 0;
   let selected = [];
   nodeMap.forEach(d => {
-    d.roots = false;
+    d.filtered = false;
+    d.root = false;
     d.selected = !filter || d.name === config.filter;
     if (d.selected) {
+      if (filter) {
+        d.filtered = true;
+      }
       count++;
       if (count === config.limit) {
         return count;
@@ -514,18 +522,18 @@ function selectNodes() {
 }
 
 function selectRoots(selected, count) {
-  // Perform a DFS from each initially selected node to the roots, selecting
+  // Perform a BFS from each initially selected node to the roots, selecting
   // nodes along the paths found.
 
   for (let start of selected) {
-    console.log(`find roots for ${start.fullname}`);
+    console.log(`Searching for roots for ${start.fullname}`);
 
     let visited = new Set();
 
-    let worklist = [{node: start, path: null}];
+    let worklist = [{node: start, path: null, length: 0}];
 
     while (worklist.length) {
-      let {node, path} = worklist.pop();
+      let {node, path, length} = worklist.shift();
 
       if (visited.has(node.id)) {
         continue;
@@ -534,6 +542,7 @@ function selectRoots(selected, count) {
 
       if (node.incomingEdges.length === 0) {
         // Found a root, select nodes on its path.
+        console.log(`  Found path of length ${length} from ${node.fullname}`);
         node.root = true;
         do {
           node.selected = true;
@@ -546,12 +555,12 @@ function selectRoots(selected, count) {
             node = path.node;
             path = path.next;
           }
-        } while (path)
+        } while (path);
       } else {
         // Queue incoming nodes.
-        path = {node, next: path};
+        let newPath = {node, next: path};
         for (let edge of node.incomingEdges) {
-          worklist.push({node: nodeMap.get(edge.id), path});
+          worklist.push({node: nodeMap.get(edge.id), path: newPath, length: length + 1});
         }
       }
     }

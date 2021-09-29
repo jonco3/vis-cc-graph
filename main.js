@@ -174,7 +174,8 @@ function parseLog(text) {
       }
       let kind = words.slice(2).join(" ");
       kind = internString(kind);
-      object.outgoingEdges.push({id: addr, name: kind});
+      object.outgoingEdges.push(addr);
+      object.outgoingEdgeNames.push(kind);
       break;
     }
 
@@ -217,7 +218,9 @@ function parseLog(text) {
                 name: kind,
                 fullname: line,
                 incomingEdges: [],
+                incomingEdgeNames: [],
                 outgoingEdges: [],
+                outgoingEdgeNames: [],
                 selected: false};
       if (objects.has(addr)) {
         throw "Duplicate object address: " + line;
@@ -234,9 +237,11 @@ function parseLog(text) {
   }
 
   objects.forEach(object => {
-    for (let info of object.outgoingEdges) {
-      objects.get(info.id).incomingEdges.push({id: object.id, name: info.name});
-    }
+    object.outgoingEdges.forEach((id, index) => {
+      let name = object.outgoingEdgeNames[index];
+      objects.get(id).incomingEdges.push(object.id);
+      objects.get(id).incomingEdgeNames.push(name);
+    });
   });
 
   return objects;
@@ -425,8 +430,8 @@ function display() {
   function deselectNode(d) {
     d.selected = false;
     let related = getRelatedNodes(d);
-    for (let info of related) {
-      let node = nodeMap.get(info.id);
+    for (let id of related) {
+      let node = nodeMap.get(id);
       if (!hasSelectedRelatives(node)) {
         node.selected = false;
       }
@@ -435,8 +440,8 @@ function display() {
 
   function hasSelectedRelatives(d) {
     let related = getRelatedNodes(d);
-    for (let info of related) {
-      let node = nodeMap.get(info.id);
+    for (let id of related) {
+      let node = nodeMap.get(id);
       if (node.selected) {
         return true;
       }
@@ -446,8 +451,8 @@ function display() {
 
   function selectRelatedNodes(d) {
     let related = getRelatedNodes(d);
-    for (let info of related) {
-      let node = nodeMap.get(info.id);
+    for (let id of related) {
+      let node = nodeMap.get(id);
       if (!node.selected) {
         node.selected = true;
         node.x = d.x;
@@ -559,8 +564,8 @@ function selectRoots(selected, count) {
       } else {
         // Queue incoming nodes.
         let newPath = {node, next: path};
-        for (let edge of node.incomingEdges) {
-          worklist.push({node: nodeMap.get(edge.id), path: newPath, length: length + 1});
+        for (let id of node.incomingEdges) {
+          worklist.push({node: nodeMap.get(id), path: newPath, length: length + 1});
         }
       }
     }
@@ -580,8 +585,8 @@ function selectRelated(selected, count) {
     }
 
     let related = getRelatedNodes(item.node);
-    for (let info of related) {
-      let node = nodeMap.get(info.id);
+    for (let id of related) {
+      let node = nodeMap.get(id);
       if (!node) {
         throw `Missing node {id}`;
       }
@@ -622,10 +627,10 @@ function getRelatedNodes(node) {
 function getLinks(objects, selected) {
   let links = [];
   for (let object of selected) {
-    for (let edge of object.outgoingEdges) {
-      if (objects.get(edge.id).selected &&
-          object.id !== edge.id) {
-        links.push({source: object.id, target: edge.id});
+    let source = object.id;
+    for (let target of object.outgoingEdges) {
+      if (objects.get(target).selected && source !== target) {
+        links.push({source, target});
       }
     }
   }

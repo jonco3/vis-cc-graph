@@ -10,15 +10,11 @@ let filename;
 let showLabels = true;
 
 function init() {
-  document.getElementById("fileMenu").onchange = event => {
-    if (event.target.value === "upload") {
-      document.getElementById("fileSelect").click();
-    } else {
-      load();
-    }
+  document.getElementById("upload").onclick = event => {
+    document.getElementById("fileSelect").click();
   };
   document.getElementById("fileSelect").onchange = () => {
-    load();
+    loadLogFile();
   };
   document.getElementById("update").onclick = () => {
     update();
@@ -27,39 +23,19 @@ function init() {
     toggleLabels();
   };
 
-  load();
+  loadFromWeb("demo-graph.log.gz", true);
 }
 
-function load() {
-  for (let element of document.getElementsByTagName("svg")) {
-    element.remove();
-  }
+function loadLogFile() {
+  clearDisplay();
 
-  let name, file;
-  let fileMenu = document.getElementById("fileMenu");
-  let index = fileMenu.selectedIndex;
-  switch (index) {
-  case 0:
-    name = "demo-graph.log.gz";
-    break;
-  case 1:
-    file = document.getElementById("fileSelect").files[0];
-    name = file.name;
-    break;
-  }
+  let file = document.getElementById("fileSelect").files[0];
+  let name = file.name;
 
   setStatus(`Loading ${name}`);
 
   let isCompressed = name.endsWith(".gz");
 
-  if (file) {
-    loadFromUser(file, name, isCompressed);
-  } else {
-    loadFromWeb(name, isCompressed);
-  }
-}
-
-function loadFromUser(file, name, isCompressed) {
   let request = new FileReader();
   request.onerror = event => {
     setStatus(`Error loading ${name}: ${event.message}`);
@@ -126,6 +102,12 @@ function loaded(name, text) {
     throw e;
   }
   update();
+}
+
+function clearDisplay() {
+  for (let element of document.getElementsByTagName("svg")) {
+    element.remove();
+  }
 }
 
 let lastStatus;

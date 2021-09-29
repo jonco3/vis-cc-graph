@@ -141,15 +141,25 @@ function parseLog(text) {
 
   for (let match of text.matchAll(lineRegExp)) {
     let line = match[0];
-    if (line.startsWith("#")) {
+    if (line[0] === "#") {
       continue;
     }
+
     let words = line.split(" ");
 
     switch (words[0]) {
+    case "==========": {
+      done = true;
+      break;
+    }
+
     case "WeakMapEntry": {
       // TODO
       break;
+    }
+
+    case "IncrementalRoot": {
+      break; // Ignore these.
     }
 
     case ">": {
@@ -166,15 +176,6 @@ function parseLog(text) {
       let kind = words.slice(2).join(" ");
       object.outgoingEdges.push({id: addr, name: kind});
       break;
-    }
-
-    case "==========": {
-      done = true;
-      break;
-    }
-
-    case "IncrementalRoot": {
-      break; // Ignore these.
     }
 
     default: {

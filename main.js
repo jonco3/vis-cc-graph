@@ -234,11 +234,11 @@ function parseLog(text) {
     }
   }
 
-  for (let object of objects.values()) {
+  objects.forEach(object => {
     for (let info of object.outgoingEdges) {
       objects.get(info.id).incomingEdges.push({id: object.id, name: info.name});
     }
-  }
+  });
 
   return objects;
 }
@@ -455,7 +455,7 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
   }
 
   let worklist = [];
-  for (let d of nodeMap.values()) {
+  nodeMap.forEach(d => {
     d.selected = d.name === filter;
     if (d.selected) {
       selected.push(d);
@@ -466,7 +466,7 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
         worklist.push({node: d, depth: 0});
       }
     }
-  }
+  });
 
   if (!filter) {
     return selected;

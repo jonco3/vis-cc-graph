@@ -6,7 +6,14 @@
 
 let nodeMap;
 let filename;
-let showLabels = true;
+let config = {
+  filter: "",
+  maxDepth: 1,
+  incoming: true,
+  outgoing: true,
+  limit: 2000,
+  showLabels: true
+};
 
 function init() {
   document.getElementById("upload").onclick = event => {
@@ -256,25 +263,47 @@ function internString(s) {
 
 function update() {
   setStatus(`Building display`);
-  let filter = document.getElementById("filter").value;
-  let depth = parseInt(document.getElementById("depth").value);
-  let incoming = document.getElementById("incoming").checked;
-  let outgoing = document.getElementById("outgoing").checked;
-  let limit = parseInt(document.getElementById("limit").value);
-  let selectedCount = selectNodes(nodeMap, filter, depth, incoming, outgoing, limit);
-  display(nodeMap, incoming, outgoing);
+  config = readConfig();
+  let selectedCount = selectNodes();
+  display();
   setStatus(`Displaying ${selectedCount} out of ${nodeMap.size} nodes of ${filename}`);
   lastStatus = undefined;
 }
 
-function toggleLabels() {
-  showLabels = !showLabels;
-  display(nodeMap);
-  document.getElementById("toggleLabels").value = `${showLabels ? "Hide" : "Show"} labels`;
+function readConfig() {
+  let filter = document.getElementById("filter").value;
+  if (!filter) {
+    filter = "";
+  }
+
+  let maxDepth = parseInt(document.getElementById("depth").value);
+  if (!maxDepth || Number.isNaN(maxDepth)) {
+    maxDepth = 0;
+  }
+
+  let incoming = document.getElementById("incoming").checked;
+  let outgoing = document.getElementById("outgoing").checked;
+
+  let limit = parseInt(document.getElementById("limit").value);
+  if (!limit || Number.isNaN(limit)) {
+    limit = 2000;
+  }
+
+  let showLabels =
+      document.getElementById("toggleLabels").value.startsWith("Hide");
+
+  return {filter, maxDepth, incoming, outgoing, limit, showLabels};
 }
 
-function display(nodeMap) {
-  let nodeList = getSelectedNodes(nodeMap);
+function toggleLabels() {
+  config.showLabels = !config.showLabels;
+  display();
+  document.getElementById("toggleLabels").value =
+    `${config.showLabels ? "Hide" : "Show"} labels`;
+}
+
+function display() {
+  let nodeList = getSelectedNodes();
   let links = getLinks(nodeMap, nodeList);
 
   let count = nodeList.length;
@@ -328,7 +357,7 @@ function display(nodeMap) {
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
-  if (showLabels) {
+  if (config.showLabels) {
     nodeGroup.append("text")
       .text(function(d) { return d.name; })
       .attr('x', 6)
@@ -379,12 +408,12 @@ function display(nodeMap) {
       selectRelatedNodes(d);
     }
 
-    display(nodeMap);
+    display();
   }
 
   function deselectNode(d) {
     d.selected = false;
-    let related = getRelatedNodes(d, incoming, outgoing);
+    let related = getRelatedNodes(d);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (!hasSelectedRelatives(node)) {
@@ -394,7 +423,7 @@ function display(nodeMap) {
   }
 
   function hasSelectedRelatives(d) {
-    let related = getRelatedNodes(d, incoming, outgoing);
+    let related = getRelatedNodes(d);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (node.selected) {
@@ -405,7 +434,7 @@ function display(nodeMap) {
   }
 
   function selectRelatedNodes(d) {
-    let related = getRelatedNodes(d, incoming, outgoing);
+    let related = getRelatedNodes(d);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (!node.selected) {
@@ -439,46 +468,34 @@ function display(nodeMap) {
   }
 }
 
-function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
-  if (!filter) {
-    filter = "";
-  }
-
-  if (!maxDepth || Number.isNaN(maxDepth)) {
-    maxDepth = 0;
-  }
-
-  if (!limit || Number.isNaN(limit)) {
-    limit = 2000;
-  }
-
+function selectNodes() {
   let count = 0;
   let worklist = [];
   nodeMap.forEach(d => {
-    d.selected = d.name === filter;
+    d.selected = d.name === config.filter;
     if (d.selected) {
       count++;
-      if (count === limit) {
+      if (count === config.limit) {
         return count;
       }
-      if (filter) {
+      if (config.filter) {
         worklist.push({node: d, depth: 0});
       }
     }
   });
 
-  if (!filter) {
+  if (!config.filter) {
     return count;
   }
 
   while (worklist.length) {
     let item = worklist.pop();
     let depth = item.depth + 1;
-    if (depth > maxDepth) {
+    if (depth > config.maxDepth) {
       continue;
     }
 
-    let related = getRelatedNodes(item.node, incoming, outgoing);
+    let related = getRelatedNodes(item.node);
     for (let info of related) {
       let node = nodeMap.get(info.id);
       if (!node) {
@@ -487,7 +504,7 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
       if (!node.selected) {
         node.selected = true;
         count++;
-        if (count === limit) {
+        if (count === config.limit) {
           return count;
         }
         worklist.push({node: node, depth: depth});
@@ -498,7 +515,7 @@ function selectNodes(nodeMap, filter, maxDepth, incoming, outgoing, limit) {
   return count;
 }
 
-function getSelectedNodes(nodeMap) {
+function getSelectedNodes() {
   let selected = [];
   nodeMap.forEach(node => {
     if (node.selected) {
@@ -507,12 +524,12 @@ function getSelectedNodes(nodeMap) {
   return selected;
 }
 
-function getRelatedNodes(node, incoming, outgoing) {
+function getRelatedNodes(node) {
   let related = [];
-  if (incoming) {
+  if (config.incoming) {
     related = related.concat(node.incomingEdges);
   }
-  if (outgoing) {
+  if (config.outgoing) {
     related = related.concat(node.outgoingEdges);
   }
   return related;

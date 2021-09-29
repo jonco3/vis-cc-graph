@@ -4,7 +4,7 @@
  * Visualise cycle collector graphs.
  */
 
-let nodeMap;
+let nodes;
 let filename;
 let config;
 
@@ -95,7 +95,7 @@ function decompress(name, compressedData) {
 function loaded(name, text) {
   filename = name;
   try {
-    nodeMap = parseLog(text);
+    nodes = parseLog(text);
   } catch (e) {
     setStatus(`Error parsing ${name}: ${e}`);
     throw e;
@@ -132,9 +132,11 @@ function setStatus(message) {
 function parseLog(text) {
   setStatus(`Parsing log file`);
 
-  let objects = new Map();
+  let objects = [];
   let object;
   let done = false;
+
+  let addressToIdMap = new Map();
 
   const lineRegExp = /[^\n]+/g;
 
@@ -213,7 +215,8 @@ function parseLog(text) {
         kind = words[2];
       }
       kind = internString(kind);
-      object = {id: addr,
+      object = {id: objects.length,
+                address: addr,
                 rc: rc,
                 name: kind,
                 fullname: line,
@@ -222,10 +225,11 @@ function parseLog(text) {
                 outgoingEdges: [],
                 outgoingEdgeNames: [],
                 selected: false};
-      if (objects.has(addr)) {
+      objects.push(object);
+      if (addressToIdMap.has(addr)) {
         throw "Duplicate object address: " + line;
       }
-      objects.set(addr, object);
+      addressToIdMap.set(addr, object.id);
       break;
     }
       
@@ -236,13 +240,24 @@ function parseLog(text) {
     }
   }
 
-  objects.forEach(object => {
-    object.outgoingEdges.forEach((id, index) => {
-      let name = object.outgoingEdgeNames[index];
-      objects.get(id).incomingEdges.push(object.id);
-      objects.get(id).incomingEdgeNames.push(name);
-    });
-  });
+  for (let object of objects) {
+    let edges = object.outgoingEdges;
+    for (let i = 0; i < edges.length; i++) {
+      // Replace address with id.
+      let addr = edges[i];
+      let name = object.outgoingEdgeNames[i];
+      let id = addressToIdMap.get(addr);
+      if (id === undefined) {
+        throw "Edge target address not found";
+      }
+      edges[i] = id;
+
+      // Add incoming edge to target.
+      let target = objects[id];
+      target.incomingEdges.push(object.id);
+      target.incomingEdgeNames.push(name);
+    }
+  }
 
   return objects;
 }
@@ -264,7 +279,7 @@ function update() {
   config = readConfig();
   let selectedCount = selectNodes();
   display();
-  setStatus(`Displaying ${selectedCount} out of ${nodeMap.size} nodes of ${filename}`);
+  setStatus(`Displaying ${selectedCount} out of ${nodes.length} nodes of ${filename}`);
   lastStatus = undefined;
 }
 
@@ -304,7 +319,7 @@ function toggleLabels() {
 
 function display() {
   let nodeList = getSelectedNodes();
-  let links = getLinks(nodeMap, nodeList);
+  let links = getLinks(nodes, nodeList);
 
   let count = nodeList.length;
   let width = Math.max(Math.sqrt(count) * 80, 800);
@@ -431,7 +446,7 @@ function display() {
     d.selected = false;
     let related = getRelatedNodes(d);
     for (let id of related) {
-      let node = nodeMap.get(id);
+      let node = nodes[id];
       if (!hasSelectedRelatives(node)) {
         node.selected = false;
       }
@@ -441,7 +456,7 @@ function display() {
   function hasSelectedRelatives(d) {
     let related = getRelatedNodes(d);
     for (let id of related) {
-      let node = nodeMap.get(id);
+      let node = nodes[id];
       if (node.selected) {
         return true;
       }
@@ -452,7 +467,7 @@ function display() {
   function selectRelatedNodes(d) {
     let related = getRelatedNodes(d);
     for (let id of related) {
-      let node = nodeMap.get(id);
+      let node = nodes[id];
       if (!node.selected) {
         node.selected = true;
         node.x = d.x;
@@ -487,7 +502,7 @@ function display() {
 function selectNodes() {
   let count = 0;
   let selected = [];
-  nodeMap.forEach(d => {
+  for (let d of nodes) {
     d.filtered = false;
     d.root = false;
     d.selected = !filter || d.name === config.filter;
@@ -503,7 +518,7 @@ function selectNodes() {
         selected.push(d);
       }
     }
-  });
+  }
 
   if (!config.filter) {
     return count;
@@ -565,7 +580,11 @@ function selectRoots(selected, count) {
         // Queue incoming nodes.
         let newPath = {node, next: path};
         for (let id of node.incomingEdges) {
-          worklist.push({node: nodeMap.get(id), path: newPath, length: length + 1});
+          let source = nodes[id];
+          if (source === undefined) {
+            throw "Incoming edge ID not found";
+          }
+          worklist.push({node: source, path: newPath, length: length + 1});
         }
       }
     }
@@ -586,7 +605,7 @@ function selectRelated(selected, count) {
 
     let related = getRelatedNodes(item.node);
     for (let id of related) {
-      let node = nodeMap.get(id);
+      let node = nodes[id];
       if (!node) {
         throw `Missing node {id}`;
       }
@@ -606,10 +625,11 @@ function selectRelated(selected, count) {
 
 function getSelectedNodes() {
   let selected = [];
-  nodeMap.forEach(node => {
+  for (let node of nodes) {
     if (node.selected) {
       selected.push(node);
-    }});
+    }
+  }
   return selected;
 }
 
@@ -629,7 +649,7 @@ function getLinks(objects, selected) {
   for (let object of selected) {
     let source = object.id;
     for (let target of object.outgoingEdges) {
-      if (objects.get(target).selected && source !== target) {
+      if (objects[target].selected && source !== target) {
         links.push({source, target});
       }
     }

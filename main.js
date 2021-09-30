@@ -349,7 +349,6 @@ function update() {
   config = readConfig();
   let selectedCount = selectNodes();
   display();
-  setStatus(`Displaying ${selectedCount} out of ${nodes.length} nodes of ${filename}`);
   lastStatus = undefined;
 }
 
@@ -483,6 +482,8 @@ function display() {
 
     return "#aaffaa"; // CC thing.
   }
+
+  setStatus(`Displaying ${nodeList.length} out of ${nodes.length} nodes of ${filename}`);
 
   function ticked() {
     const radius = 10;

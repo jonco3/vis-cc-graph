@@ -532,16 +532,16 @@ function display() {
 }
 
 function openInspector() {
-  document.getElementById("inspector").style.width = "320px";
+  document.getElementById("inspector").style.visibility = "visible";
 }
 
 function closeInspector() {
-  document.getElementById("inspector").style.width = "0";
+  document.getElementById("inspector").style.visibility = "hidden";
 }
 
 function populateInspector(node) {
-  let inspector = document.getElementById("inspectorContent");
-  while (inspector.hasChildNodes()) {
+  let inspector = document.getElementById("inspector");
+  while (inspector.childElementCount > 1) {
     inspector.removeChild(inspector.lastChild);
   }
 
@@ -554,10 +554,10 @@ function populateInspector(node) {
       let target = nodes[node.incomingEdges[i]];
       let name = node.incomingEdgeNames[i];
       let addr = target.address.toString(16);
-      addInspectorLine(inspector, `  0x${addr} ${target.name} ${name}`);
+      addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1);
     }
     if (node.incomingEdges.length > maxEdges) {
-      addInspectorLine(inspector, "  ...");
+      addInspectorLine(inspector, "...", 1);
     }
   }
   if (node.outgoingEdges.length) {
@@ -566,10 +566,10 @@ function populateInspector(node) {
       let source = nodes[node.outgoingEdges[i]];
       let name = node.outgoingEdgeNames[i];
       let addr = source.address.toString(16);
-      addInspectorLine(inspector, `  ${name}: 0x${addr} ${source.name}`);
+      addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1);
     }
     if (node.outgoingEdges.length > maxEdges) {
-      addInspectorLine(inspector, "  ...");
+      addInspectorLine(inspector, "...", 1);
     }
   }
 
@@ -577,10 +577,15 @@ function populateInspector(node) {
   addInspectorButton(inspector, "Show related", () => selectRelatedNodes(node));
 }
 
-function addInspectorLine(inspector, text) {
-  let pre = document.createElement("pre");
-  pre.textContent = text;
-  inspector.appendChild(pre);
+function addInspectorLine(inspector, text, indent) {
+  if (indent) {
+    for (let i = 0; i < indent; i++) {
+      text = "&nbsp;&nbsp;" + text;
+    }
+  }
+  let elem = document.createElement("p");
+  elem.innerHTML = text;
+  inspector.appendChild(elem);
 }
 
 function addInspectorButton(inspector, label, handler) {

@@ -342,7 +342,7 @@ function createEdge(source, target, name) {
 }
 
 function update() {
-  setStatus(`Building display`);
+  closeInspector();
   config = readConfig();
   let selectedCount = selectNodes();
   display();
@@ -385,6 +385,8 @@ function toggleLabels() {
 }
 
 function display() {
+  setStatus(`Building display`);
+
   let nodeList = getSelectedNodes();
   let links = getLinks(nodes, nodeList);
 
@@ -624,6 +626,8 @@ function selectRelatedNodes(d) {
 }
 
 function selectNodes() {
+  setStatus(`Selecting nodes`);
+
   let count = 0;
   let selected = [];
   for (let d of nodes) {

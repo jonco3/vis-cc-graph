@@ -574,7 +574,8 @@ function populateInspector(node) {
   }
 
   addInspectorButton(inspector, "Hide", () => deselectNode(node));
-  addInspectorButton(inspector, "Show related", () => selectRelatedNodes(node));
+  addInspectorButton(inspector, "Show related", () => selectRelatedNodes(node, false));
+  addInspectorButton(inspector, "Show only related", () => selectRelatedNodes(node, true));
 }
 
 function addInspectorLine(inspector, text, indent) {
@@ -620,7 +621,13 @@ function hasSelectedRelatives(d) {
   return false;
 }
 
-function selectRelatedNodes(d) {
+function selectRelatedNodes(d, hideOthers) {
+  if (hideOthers) {
+    for (let node of nodes) {
+      node.selected = false;
+    }
+  }
+  d.selected = true;
   let related = getRelatedNodes(d, true, true);
   for (let id of related) {
     let node = nodes[id];

@@ -577,12 +577,17 @@ function populateInspector(node) {
     inspector.removeChild(inspector.lastChild);
   }
 
-  const maxEdges = 8;
+  const maxEdges = 60;
 
   addInspectorLine(inspector, node.fullname);
+
+  addInspectorButton(inspector, "Hide", () => deselectNode(node));
+  addInspectorButton(inspector, "Show adjacent", () => selectRelatedNodes(node, false));
+  addInspectorButton(inspector, "Focus", () => selectRelatedNodes(node, true));
+
   if (node.incomingEdges.length) {
-    addInspectorLine(inspector, `Incoming edges:`);
     let count = node.incomingEdges.length;
+    addInspectorLine(inspector, `Incoming edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
       let target = nodes[node.incomingEdges[i]];
       let name = node.incomingEdgeNames[i];
@@ -594,8 +599,8 @@ function populateInspector(node) {
     }
   }
   if (node.outgoingEdges.length) {
-    addInspectorLine(inspector, `Outgoing edges:`);
     let count = node.outgoingEdges.length;
+    addInspectorLine(inspector, `Outgoing edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
       let source = nodes[node.outgoingEdges[i]];
       let name = node.outgoingEdgeNames[i];
@@ -606,10 +611,6 @@ function populateInspector(node) {
       addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
   }
-
-  addInspectorButton(inspector, "Hide", () => deselectNode(node));
-  addInspectorButton(inspector, "Show related", () => selectRelatedNodes(node, false));
-  addInspectorButton(inspector, "Show only related", () => selectRelatedNodes(node, true));
 }
 
 function addInspectorLine(inspector, text, indent, node) {

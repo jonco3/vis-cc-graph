@@ -296,12 +296,12 @@ function parseLog(text) {
     // Create a fake node for each entry.
     let entry = createNode(0, 1, "WeakMapEntry", line);
     if (hasMap) {
-      createEdge(map, entry, "WeakMap entry")
+      createEdge(map, entry, "WeakMap entry");
     }
-    createEdge(key, entry, "WeakMap entry")
-    createEdge(entry, value, "WeakMap value")
+    createEdge(key, entry, "(Used as WeakMap key)");
+    createEdge(entry, value, "WeakMap value");
     if (delegate !== key) {
-      createEdge(delegate, key, "WeakMap key")
+      createEdge(delegate, key, "(Used as WeakMap key delegate)");
     }
   }
 }

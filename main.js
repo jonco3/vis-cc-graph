@@ -218,17 +218,7 @@ function parseLog(text) {
         kind = words[2];
       }
       kind = internString(kind);
-      node = {id: nodes.length,
-                address: addr,
-                rc: rc,
-                name: kind,
-                fullname: line,
-                incomingEdges: [],
-                incomingEdgeNames: [],
-                outgoingEdges: [],
-                outgoingEdgeNames: [],
-                selected: false};
-      nodes.push(node);
+      node = createNode(addr, rc, kind, line);
       if (addressToIdMap.has(addr)) {
         throw "Duplicate node address: " + line;
       }
@@ -273,6 +263,21 @@ function internString(s) {
 
   strings.set(s, s);
   return s;
+}
+
+function createNode(addr, rc, kind, line) {
+  let node = {id: nodes.length,
+              address: addr,
+              rc: rc,
+              name: kind,
+              fullname: line,
+              incomingEdges: [],
+              incomingEdgeNames: [],
+              outgoingEdges: [],
+              outgoingEdgeNames: [],
+              selected: false};
+  nodes.push(node);
+  return node;
 }
 
 function update() {

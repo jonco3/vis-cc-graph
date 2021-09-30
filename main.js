@@ -98,7 +98,7 @@ function decompress(name, compressedData) {
 function loaded(name, text) {
   filename = name;
   try {
-    nodes = parseLog(text);
+    parseLog(text);
   } catch (e) {
     setStatus(`Error parsing ${name}: ${e}`);
     throw e;
@@ -135,8 +135,8 @@ function setStatus(message) {
 function parseLog(text) {
   setStatus(`Parsing log file`);
 
-  let objects = [];
-  let object;
+  nodes = [];
+  let node;
   let done = false;
 
   let addressToIdMap = new Map();
@@ -167,7 +167,7 @@ function parseLog(text) {
     }
 
     case ">": {
-      if (!object) {
+      if (!node) {
         throw "Unexpected >";
       }
       if (!words[1].startsWith("0x")) {
@@ -179,8 +179,8 @@ function parseLog(text) {
       }
       let kind = words.slice(2).join(" ");
       kind = internString(kind);
-      object.outgoingEdges.push(addr);
-      object.outgoingEdgeNames.push(kind);
+      node.outgoingEdges.push(addr);
+      node.outgoingEdgeNames.push(kind);
       break;
     }
 
@@ -195,7 +195,7 @@ function parseLog(text) {
       let rc;
       let kind;
       if (words[1].startsWith("[gc")) {
-        rc = -1; // => JS GC object.
+        rc = -1; // => JS GC node.
         kind = words[3];
         if (kind === "Object") {
           kind = words[4];
@@ -218,7 +218,7 @@ function parseLog(text) {
         kind = words[2];
       }
       kind = internString(kind);
-      object = {id: objects.length,
+      node = {id: nodes.length,
                 address: addr,
                 rc: rc,
                 name: kind,
@@ -228,11 +228,11 @@ function parseLog(text) {
                 outgoingEdges: [],
                 outgoingEdgeNames: [],
                 selected: false};
-      objects.push(object);
+      nodes.push(node);
       if (addressToIdMap.has(addr)) {
-        throw "Duplicate object address: " + line;
+        throw "Duplicate node address: " + line;
       }
-      addressToIdMap.set(addr, object.id);
+      addressToIdMap.set(addr, node.id);
       break;
     }
       
@@ -243,12 +243,12 @@ function parseLog(text) {
     }
   }
 
-  for (let object of objects) {
-    let edges = object.outgoingEdges;
+  for (let node of nodes) {
+    let edges = node.outgoingEdges;
     for (let i = 0; i < edges.length; i++) {
       // Replace address with id.
       let addr = edges[i];
-      let name = object.outgoingEdgeNames[i];
+      let name = node.outgoingEdgeNames[i];
       let id = addressToIdMap.get(addr);
       if (id === undefined) {
         throw "Edge target address not found";
@@ -256,13 +256,11 @@ function parseLog(text) {
       edges[i] = id;
 
       // Add incoming edge to target.
-      let target = objects[id];
-      target.incomingEdges.push(object.id);
+      let target = nodes[id];
+      target.incomingEdges.push(node.id);
       target.incomingEdgeNames.push(name);
     }
   }
-
-  return objects;
 }
 
 let strings = new Map();

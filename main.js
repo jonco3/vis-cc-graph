@@ -328,6 +328,9 @@ function createNode(addr, rc, kind, line) {
               incomingEdgeNames: [],
               outgoingEdges: [],
               outgoingEdgeNames: [],
+              root: false,
+              visited: false,
+              filtered: false,
               selected: false};
   nodes.push(node);
   return node;
@@ -631,8 +634,8 @@ function selectNodes() {
   let count = 0;
   let selected = [];
   for (let d of nodes) {
+    d.root = d.incomingEdges.length === 0;
     d.filtered = false;
-    d.root = false;
     d.selected = !filter || d.name === config.filter;
     if (d.selected) {
       if (filter) {
@@ -676,17 +679,19 @@ function selectRoots(selected, count) {
   for (let start of selected) {
     console.log(`Searching for roots for ${start.fullname}`);
 
-    let visited = new Set();
+    for (let node of nodes) {
+      node.visited = false;
+    }
 
     let worklist = [{node: start, path: null, length: 0}];
 
     while (worklist.length) {
       let {node, path, length} = worklist.shift();
 
-      if (visited.has(node.id)) {
+      if (node.visited) {
         continue;
       }
-      visited.add(node.id);
+      node.visited = true;
 
       if (node.incomingEdges.length === 0) {
         // Found a root, select nodes on its path.
@@ -708,8 +713,8 @@ function selectRoots(selected, count) {
         // Queue unvisited incoming nodes.
         let newPath = {node, next: path};
         for (let id of node.incomingEdges) {
-          if (!visited.has(id)) {
-            let source = nodes[id];
+          let source = nodes[id];
+          if (!source.visited) {
             if (source === undefined) {
               throw "Incoming edge ID not found";
             }

@@ -704,15 +704,17 @@ function selectRoots(selected, count) {
             path = path.next;
           }
         } while (path);
-      } else {
-        // Queue incoming nodes.
+      } else  {
+        // Queue unvisited incoming nodes.
         let newPath = {node, next: path};
         for (let id of node.incomingEdges) {
-          let source = nodes[id];
-          if (source === undefined) {
-            throw "Incoming edge ID not found";
+          if (!visited.has(id)) {
+            let source = nodes[id];
+            if (source === undefined) {
+              throw "Incoming edge ID not found";
+            }
+            worklist.push({node: source, path: newPath, length: length + 1});
           }
-          worklist.push({node: source, path: newPath, length: length + 1});
         }
       }
     }

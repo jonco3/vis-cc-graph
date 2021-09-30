@@ -29,6 +29,7 @@ function init() {
 }
 
 function loadLogFile() {
+  closeInspector();
   clearDisplay();
 
   let file = document.getElementById("fileSelect").files[0];
@@ -342,7 +343,6 @@ function createEdge(source, target, name) {
 
 function update() {
   setStatus(`Building display`);
-  closeInspector();
   config = readConfig();
   let selectedCount = selectNodes();
   display();
@@ -549,7 +549,7 @@ function populateInspector(node) {
       let target = nodes[node.incomingEdges[i]];
       let name = node.incomingEdgeNames[i];
       let addr = target.address.toString(16);
-      addInspectorLine(inspector, `  ${name}: 0x${addr} ${target.name}`);
+      addInspectorLine(inspector, `  0x${addr} ${target.name} ${name}`);
     }
     if (node.incomingEdges.length > maxEdges) {
       addInspectorLine(inspector, "  ...");
@@ -588,7 +588,7 @@ function addInspectorButton(inspector, label, handler) {
 
 function deselectNode(d) {
   d.selected = false;
-  let related = getRelatedNodes(d);
+  let related = getRelatedNodes(d, true, true);
   for (let id of related) {
     let node = nodes[id];
     if (!hasSelectedRelatives(node)) {
@@ -600,7 +600,7 @@ function deselectNode(d) {
 }
 
 function hasSelectedRelatives(d) {
-  let related = getRelatedNodes(d);
+  let related = getRelatedNodes(d, true, true);
   for (let id of related) {
     let node = nodes[id];
     if (node.selected) {
@@ -611,7 +611,7 @@ function hasSelectedRelatives(d) {
 }
 
 function selectRelatedNodes(d) {
-  let related = getRelatedNodes(d);
+  let related = getRelatedNodes(d, true, true);
   for (let id of related) {
     let node = nodes[id];
     if (!node.selected) {
@@ -727,7 +727,7 @@ function selectRelated(selected, count) {
       continue;
     }
 
-    let related = getRelatedNodes(item.node);
+    let related = getRelatedNodes(item.node, config.incoming, config.outgoing);
     for (let id of related) {
       let node = nodes[id];
       if (!node) {
@@ -757,12 +757,12 @@ function getSelectedNodes() {
   return selected;
 }
 
-function getRelatedNodes(node) {
+function getRelatedNodes(node, incoming, outgoing) {
   let related = [];
-  if (config.incoming) {
+  if (incoming) {
     related = related.concat(node.incomingEdges);
   }
-  if (config.outgoing) {
+  if (outgoing) {
     related = related.concat(node.outgoingEdges);
   }
   return related;

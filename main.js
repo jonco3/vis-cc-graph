@@ -709,16 +709,27 @@ function selectRoots(selected, count) {
             path = path.next;
           }
         } while (path);
+
+        // Stop at the first root found. This will not report any additional
+        // roots but is much faster.
+        break;
       } else  {
         // Queue unvisited incoming nodes.
         let newPath = {node, next: path};
         for (let id of node.incomingEdges) {
           let source = nodes[id];
-          if (!source.visited) {
-            if (source === undefined) {
-              throw "Incoming edge ID not found";
-            }
-            worklist.push({node: source, path: newPath, length: length + 1});
+          if (source === undefined) {
+            throw "Incoming edge ID not found";
+          }
+          if (source.visited) {
+            continue;
+          }
+          let item = {node: source, path: newPath, length: length + 1};
+          if (source.selected) {
+            // Eager depth first traversal of previously found paths.
+            worklist.unshift(item);
+          } else {
+            worklist.push(item);
           }
         }
       }

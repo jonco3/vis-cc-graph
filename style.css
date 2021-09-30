@@ -30,7 +30,6 @@ marker {
 }
 
 .inspector {
-    height: 450px;
     width: 400px;
     border-radius: 10px;
     border: 1px solid #444;
@@ -40,8 +39,7 @@ marker {
     left: 0;
     background-color: #fffc;
     overflow-x: hidden;
-    padding-left: 20px;
-    padding-top: 20px;
+    padding: 20px;
     visibility: hidden;
 }
 

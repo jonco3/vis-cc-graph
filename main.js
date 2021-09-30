@@ -35,13 +35,13 @@ function loadLogFile() {
   let file = document.getElementById("fileSelect").files[0];
   let name = file.name;
 
-  setStatus(`Loading ${name}`);
+  setStatusAndProfile(`Loading ${name}`);
 
   let isCompressed = name.endsWith(".gz");
 
   let request = new FileReader();
   request.onerror = event => {
-    setStatus(`Error loading ${name}: ${event.message}`);
+    setErrorStatus(`Error loading ${name}: ${event.message}`);
   };
   request.onprogress = event => {
     const percent = Math.floor(100 * event.loaded / event.total);
@@ -64,7 +64,7 @@ function loadLogFile() {
 function loadFromWeb(name, isCompressed) {
   let request = new XMLHttpRequest();
   request.onerror = event => {
-    setStatus(`Error loading ${name}: ${event.message}`);
+    setErrorStatus(`Error loading ${name}: ${event.message}`);
   };
   request.onprogress = event => {
     const percent = Math.floor(100 * event.loaded / event.total);
@@ -85,12 +85,12 @@ function loadFromWeb(name, isCompressed) {
 }
 
 function decompress(name, compressedData) {
-  setStatus(`Decompressing ${name}`);
+  setStatusAndProfile(`Decompressing ${name}`);
   let text;
   try {
     text = pako.inflate(compressedData, { to: 'string' });
   } catch (e) {
-    setStatus(`Error decompressing ${name}: ${e}`);
+    setErrorStatus(`Error decompressing ${name}: ${e}`);
     throw e;
   }
   loaded(name, text);
@@ -101,7 +101,7 @@ function loaded(name, text) {
   try {
     parseLog(text);
   } catch (e) {
-    setStatus(`Error parsing ${name}: ${e}`);
+    setErrorStatus(`Error parsing ${name}: ${e}`);
     throw e;
   }
   update();
@@ -116,12 +116,8 @@ function clearDisplay() {
 let lastStatus;
 let startTime;
 
-function setStatus(message) {
-  document.getElementById("message").textContent = `Status: ${message}`;
-
-  if (message.endsWith("%")) {
-    return;
-  }
+function setStatusAndProfile(message) {
+  setStatus(message);
 
   let time = performance.now();
   if (lastStatus) {
@@ -133,8 +129,22 @@ function setStatus(message) {
   lastStatus = message;
 }
 
+function setErrorStatus(message) {
+  setStatus(message);
+  clearProfile();
+}
+
+function setStatus(message) {
+  document.getElementById("message").textContent = `Status: ${message}`;
+}
+
+function clearProfile() {
+  lastStatus = undefined;
+  startTime = undefined;
+}
+
 function parseLog(text) {
-  setStatus(`Parsing log file`);
+  setStatusAndProfile(`Parsing log file`);
 
   nodes = [];
   let node;
@@ -349,7 +359,7 @@ function update() {
   config = readConfig();
   let selectedCount = selectNodes();
   display();
-  lastStatus = undefined;
+  clearProfile();
 }
 
 function readConfig() {
@@ -387,7 +397,7 @@ function toggleLabels() {
 }
 
 function display() {
-  setStatus(`Building display`);
+  setStatusAndProfile(`Building display`);
 
   let nodeList = getSelectedNodes();
   let links = getLinks(nodes, nodeList);
@@ -483,7 +493,7 @@ function display() {
     return "#aaffaa"; // CC thing.
   }
 
-  setStatus(`Displaying ${nodeList.length} out of ${nodes.length} nodes of ${filename}`);
+  setStatusAndProfile(`Displaying ${nodeList.length} out of ${nodes.length} nodes of ${filename}`);
 
   function ticked() {
     const radius = 10;
@@ -654,7 +664,7 @@ function selectRelatedNodes(d, hideOthers) {
 }
 
 function selectNodes() {
-  setStatus(`Selecting nodes`);
+  setStatusAndProfile(`Selecting nodes`);
 
   let count = 0;
   let selected = [];

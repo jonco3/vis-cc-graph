@@ -544,22 +544,24 @@ function populateInspector(node) {
 
   addInspectorLine(inspector, node.fullname);
   if (node.incomingEdges.length) {
-    addInspectorLine(inspector, "Incoming edges:");
+    addInspectorLine(inspector, `Incoming edges (${node.incomingEdges.length}):`);
     for (let i = 0; i < Math.min(node.incomingEdges.length, maxEdges); i++) {
       let target = nodes[node.incomingEdges[i]];
+      let name = node.incomingEdgeNames[i];
       let addr = target.address.toString(16);
-      addInspectorLine(inspector, `  0x${addr} ${target.name}`);
+      addInspectorLine(inspector, `  ${name}: 0x${addr} ${target.name}`);
     }
     if (node.incomingEdges.length > maxEdges) {
       addInspectorLine(inspector, "  ...");
     }
   }
   if (node.outgoingEdges.length) {
-    addInspectorLine(inspector, "Outgoing edges:");
+    addInspectorLine(inspector, `Outgoing edges (${node.outgoingEdges.length}):`);
     for (let i = 0; i < Math.min(node.outgoingEdges.length, maxEdges); i++) {
       let source = nodes[node.outgoingEdges[i]];
+      let name = node.outgoingEdgeNames[i];
       let addr = source.address.toString(16);
-      addInspectorLine(inspector, `  0x${addr} ${source.name}`);
+      addInspectorLine(inspector, `  ${name}: 0x${addr} ${source.name}`);
     }
     if (node.outgoingEdges.length > maxEdges) {
       addInspectorLine(inspector, "  ...");

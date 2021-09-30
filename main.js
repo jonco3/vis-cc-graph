@@ -7,6 +7,7 @@
 let nodes;
 let filename;
 let config;
+let state = "idle";
 
 function init() {
   document.getElementById("upload").onclick = event => {
@@ -98,13 +99,10 @@ function decompress(name, compressedData) {
 
 function loaded(name, text) {
   filename = name;
-  try {
-    parseLog(text);
-  } catch (e) {
+  parseLog(text).then(update).catch(e => {
     setErrorStatus(`Error parsing ${name}: ${e}`);
     throw e;
-  }
-  update();
+  });
 }
 
 function clearDisplay() {
@@ -143,7 +141,8 @@ function clearProfile() {
   startTime = undefined;
 }
 
-function parseLog(text) {
+async function parseLog(text) {
+  state = "parsing";
   setStatusAndProfile(`Parsing log file`);
 
   nodes = [];
@@ -155,8 +154,17 @@ function parseLog(text) {
 
   const lineRegExp = /[^\n]+/g;
 
+  let count = 0;
+
   for (let match of text.matchAll(lineRegExp)) {
     let line = match[0];
+
+    count++;
+    if (count % 100000 === 0) {
+      setStatus(`Parsing log file: processed ${count} lines`);
+      await new Promise(requestAnimationFrame);
+    }
+
     if (line[0] === "#") {
       continue;
     }
@@ -314,6 +322,8 @@ function parseLog(text) {
       createEdge(delegate, key, "(Used as WeakMap key delegate)");
     }
   }
+
+  state = "idle";
 }
 
 let strings = new Map();
@@ -397,6 +407,10 @@ function toggleLabels() {
 }
 
 function display() {
+  if (state !== "idle") {
+    throw "Bad state: " + state;
+  }
+
   setStatusAndProfile(`Building display`);
 
   let nodeList = getSelectedNodes();

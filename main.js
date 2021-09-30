@@ -364,10 +364,17 @@ function createEdge(source, target, name) {
   target.incomingEdgeNames.push(name);
 }
 
-function update() {
+async function update() {
+  if (state !== "idle") {
+    throw "Bad state: " + state;
+  }
+  state = "updating";
+
   closeInspector();
   config = readConfig();
-  let selectedCount = selectNodes();
+  let selectedCount = await selectNodes();
+  state = "idle";
+
   display();
   clearProfile();
 }
@@ -677,7 +684,7 @@ function selectRelatedNodes(d, hideOthers) {
   display();
 }
 
-function selectNodes() {
+async function selectNodes() {
   setStatusAndProfile(`Selecting nodes`);
 
   let count = 0;
@@ -705,7 +712,7 @@ function selectNodes() {
   }
 
   if (config.roots) {
-    count = selectRoots(selected, count);
+    count = await selectRoots(selected, count);
     if (count === config.limit) {
       return count;
     }
@@ -721,12 +728,14 @@ function selectNodes() {
   return count;
 }
 
-function selectRoots(selected, count) {
+async function selectRoots(selected, count) {
   // Perform a BFS from each initially selected node to the roots, selecting
   // nodes along the paths found.
 
+  let i = 0;
+
   for (let start of selected) {
-    console.log(`Searching for roots for ${start.fullname}`);
+    setStatus(`Searching for roots for ${start.fullname}`);
 
     for (let node of nodes) {
       node.visited = false;
@@ -741,6 +750,12 @@ function selectRoots(selected, count) {
         continue;
       }
       node.visited = true;
+
+      i++;
+      if (i % 100000 === 0) {
+        setStatus(`Visited ${i} nodes`);
+        await new Promise(requestAnimationFrame);
+      }
 
       if (node.incomingEdges.length === 0) {
         // Found a root, select nodes on its path.

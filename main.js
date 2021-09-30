@@ -554,7 +554,7 @@ function populateInspector(node) {
       let target = nodes[node.incomingEdges[i]];
       let name = node.incomingEdgeNames[i];
       let addr = target.address.toString(16);
-      addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1);
+      addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
     }
     if (node.incomingEdges.length > maxEdges) {
       addInspectorLine(inspector, "...", 1);
@@ -566,7 +566,7 @@ function populateInspector(node) {
       let source = nodes[node.outgoingEdges[i]];
       let name = node.outgoingEdgeNames[i];
       let addr = source.address.toString(16);
-      addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1);
+      addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1, source);
     }
     if (node.outgoingEdges.length > maxEdges) {
       addInspectorLine(inspector, "...", 1);
@@ -578,13 +578,17 @@ function populateInspector(node) {
   addInspectorButton(inspector, "Show only related", () => selectRelatedNodes(node, true));
 }
 
-function addInspectorLine(inspector, text, indent) {
+function addInspectorLine(inspector, text, indent, node) {
   if (indent) {
     for (let i = 0; i < indent; i++) {
       text = "&nbsp;&nbsp;" + text;
     }
   }
   let elem = document.createElement("p");
+  if (node) {
+    elem.onclick = () => selectNode(node);
+  }
+
   elem.innerHTML = text;
   inspector.appendChild(elem);
 }
@@ -595,6 +599,14 @@ function addInspectorButton(inspector, label, handler) {
   input.value = label;
   input.onclick = handler;
   inspector.appendChild(input);
+}
+
+function selectNode(d) {
+  if (!d.selected) {
+    d.selected = true;
+    display();
+  }
+  populateInspector(d);
 }
 
 function deselectNode(d) {

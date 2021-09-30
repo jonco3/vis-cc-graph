@@ -43,6 +43,10 @@ marker {
     visibility: hidden;
 }
 
+.inspector p {
+    margin: 0.6em;
+}
+
 .inspector a {
     padding: 8px 8px 8px 8px;
     text-decoration: none;

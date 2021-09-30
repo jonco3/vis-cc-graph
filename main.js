@@ -577,31 +577,33 @@ function populateInspector(node) {
     inspector.removeChild(inspector.lastChild);
   }
 
-  const maxEdges = 5;
+  const maxEdges = 8;
 
   addInspectorLine(inspector, node.fullname);
   if (node.incomingEdges.length) {
-    addInspectorLine(inspector, `Incoming edges (${node.incomingEdges.length}):`);
-    for (let i = 0; i < Math.min(node.incomingEdges.length, maxEdges); i++) {
+    addInspectorLine(inspector, `Incoming edges:`);
+    let count = node.incomingEdges.length;
+    for (let i = 0; i < Math.min(count, maxEdges); i++) {
       let target = nodes[node.incomingEdges[i]];
       let name = node.incomingEdgeNames[i];
       let addr = target.address.toString(16);
       addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
     }
-    if (node.incomingEdges.length > maxEdges) {
-      addInspectorLine(inspector, "...", 1);
+    if (count > maxEdges) {
+      addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
   }
   if (node.outgoingEdges.length) {
-    addInspectorLine(inspector, `Outgoing edges (${node.outgoingEdges.length}):`);
-    for (let i = 0; i < Math.min(node.outgoingEdges.length, maxEdges); i++) {
+    addInspectorLine(inspector, `Outgoing edges:`);
+    let count = node.outgoingEdges.length;
+    for (let i = 0; i < Math.min(count, maxEdges); i++) {
       let source = nodes[node.outgoingEdges[i]];
       let name = node.outgoingEdgeNames[i];
       let addr = source.address.toString(16);
       addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1, source);
     }
-    if (node.outgoingEdges.length > maxEdges) {
-      addInspectorLine(inspector, "...", 1);
+    if (count > maxEdges) {
+      addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
   }
 

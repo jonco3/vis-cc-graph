@@ -138,6 +138,7 @@ function parseLog(text) {
   nodes = [];
   let node;
   let done = false;
+  let weakMapEntries = [];
 
   let addressToIdMap = new Map();
 
@@ -158,7 +159,29 @@ function parseLog(text) {
     }
 
     case "WeakMapEntry": {
-      // TODO
+      words.shift();
+      let fields = words.map(w => {
+        let field = w.split("=")[1];
+        if (field === undefined) {
+          throw "Can't find weak map address: " + line;
+        }
+        if (field === "(nil)") {
+          return 0;
+        }
+        if (!field.startsWith("0x")) {
+          throw "Can't parse weak map address: " + line;
+        }
+        let addr = parseInt(field.substr(2), 16);
+        if (Number.isNaN(addr)) {
+          throw "Can't parse weak map address: " + line;
+        }
+        return addr;
+      });
+      if (fields.length !== 4) {
+          throw "Can't parse weak map entry: " + line;
+      }
+      fields.unshift(line);
+      weakMapEntries.push(fields);
       break;
     }
 
@@ -251,6 +274,35 @@ function parseLog(text) {
       target.incomingEdgeNames.push(name);
     }
   }
+
+  for (let [line, map, ...fields] of weakMapEntries) {
+    let hasMap = map !== 0;
+    if (hasMap) {
+      let id = addressToIdMap.get(map);
+      if (id === undefined) {
+        throw "WeakMapEntry map not found: " + line;
+      }
+      map = nodes[id];
+    }
+    let [key, delegate, value] = fields.map(addr => {
+      let id = addressToIdMap.get(addr);
+      if (id === undefined) {
+        throw "WeakMapEntry field not found: " + line;
+      }
+      return nodes[id];
+    });
+
+    // Create a fake node for each entry.
+    let entry = createNode(0, 1, "WeakMapEntry", line);
+    if (hasMap) {
+      createEdge(map, entry, "WeakMap entry")
+    }
+    createEdge(key, entry, "WeakMap entry")
+    createEdge(entry, value, "WeakMap value")
+    if (delegate !== key) {
+      createEdge(delegate, key, "WeakMap key")
+    }
+  }
 }
 
 let strings = new Map();
@@ -278,6 +330,14 @@ function createNode(addr, rc, kind, line) {
               selected: false};
   nodes.push(node);
   return node;
+}
+
+function createEdge(source, target, name) {
+  // Must be called after edge address are replaced with ids!
+  source.outgoingEdges.push(target.id);
+  source.outgoingEdgeNames.push(name);
+  target.incomingEdges.push(source.id);
+  target.incomingEdgeNames.push(name);
 }
 
 function update() {

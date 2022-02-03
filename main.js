@@ -9,6 +9,8 @@ let filename;
 let config;
 let state = "idle";
 
+let inspectorPrev;
+
 function init() {
   document.getElementById("upload").onclick = event => {
     document.getElementById("fileSelect").click();
@@ -31,6 +33,8 @@ function init() {
 
 function loadLogFile() {
   closeInspector();
+  inspectorPrev = undefined;
+
   clearDisplay();
 
   let file = document.getElementById("fileSelect").files[0];
@@ -585,6 +589,14 @@ function populateInspector(node) {
   addInspectorButton(inspector, "Show adjacent", () => selectRelatedNodes(node, false));
   addInspectorButton(inspector, "Focus", () => selectRelatedNodes(node, true));
 
+  if (inspectorPrev) {
+    let prev = inspectorPrev;
+    addInspectorButton(inspector, "Find paths from prev", () => selectPathsBetween(node, prev));
+  }
+  inspectorPrev = node;
+
+  addInspectorButton(inspector, "Find roots", () => selectRootsFromNode(node));
+
   if (node.incomingEdges.length) {
     let count = node.incomingEdges.length;
     addInspectorLine(inspector, `Incoming edges (${count}):`);
@@ -598,6 +610,7 @@ function populateInspector(node) {
       addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
   }
+
   if (node.outgoingEdges.length) {
     let count = node.outgoingEdges.length;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
@@ -611,6 +624,7 @@ function populateInspector(node) {
       addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
   }
+
 }
 
 function addInspectorLine(inspector, text, indent, node) {
@@ -687,6 +701,22 @@ function selectRelatedNodes(d, hideOthers) {
   display();
 }
 
+async function selectRootsFromNode(node) {
+  selectRoots([node], 0);
+  display();
+}
+
+async function selectPathsBetween(a, b) {
+  console.log(`Selecting paths between ${a.fullname} and ${b.fullname}`);
+  selectPathBetween(a, b);
+  selectPathBetween(b, a);
+  display();
+}
+
+async function selectPathBetween(from, to) {
+  selectPathWithBFS(from, node => node === to, () => undefined, 0);
+}
+
 async function selectNodes() {
   setStatusAndProfile(`Selecting nodes`);
 
@@ -732,77 +762,89 @@ async function selectNodes() {
 }
 
 async function selectRoots(selected, count) {
-  // Perform a BFS from each initially selected node to the roots, selecting
-  // nodes along the paths found.
+  for (let start of selected) {
+    setStatus(`Searching for roots for ${start.fullname}`);
+    count += selectPathWithBFS(start,
+                               node => node.incomingEdges.length === 0,
+                               node => { node.root = true; },
+                               count);
+    if (count === config.limit) {
+      break;
+    }
+  }
+
+  return count;
+}
+
+async function selectPathWithBFS(start, predicate, onFound, count) {
+  // Perform a BFS from |start| searching for nodes for which
+  // |predicate(node)| is true and select nodes along the path found.
 
   let i = 0;
 
-  for (let start of selected) {
-    setStatus(`Searching for roots for ${start.fullname}`);
+  for (let node of nodes) {
+    node.visited = false;
+  }
 
-    for (let node of nodes) {
-      node.visited = false;
+  let worklist = [{node: start, path: null, length: 0}];
+
+  while (worklist.length) {
+    let {node, path, length} = worklist.shift();
+
+    if (node.visited) {
+      continue;
+    }
+    node.visited = true;
+
+    i++;
+    if (i % 100000 === 0) {
+      setStatus(`Visited ${i} nodes`);
+      await new Promise(requestAnimationFrame);
     }
 
-    let worklist = [{node: start, path: null, length: 0}];
+    if (predicate(node)) {
+      // Found a root, select nodes on its path.
+      console.log(`  Found path of length ${length} from ${node.fullname} to ${start.fullname}`);
+      onFound(node);
+      do {
+        node.selected = true;
+        count++;
+        if (count === config.limit) {
+          return count;
+        }
 
-    while (worklist.length) {
-      let {node, path, length} = worklist.shift();
+        if (path) {
+          node = path.node;
+          path = path.next;
+        }
+      } while (path);
 
-      if (node.visited) {
-        continue;
-      }
-      node.visited = true;
-
-      i++;
-      if (i % 100000 === 0) {
-        setStatus(`Visited ${i} nodes`);
-        await new Promise(requestAnimationFrame);
-      }
-
-      if (node.incomingEdges.length === 0) {
-        // Found a root, select nodes on its path.
-        console.log(`  Found path of length ${length} from ${node.fullname}`);
-        node.root = true;
-        do {
-          node.selected = true;
-          count++;
-          if (count === config.limit) {
-            return count;
-          }
-
-          if (path) {
-            node = path.node;
-            path = path.next;
-          }
-        } while (path);
-
-        // Stop at the first root found. This will not report any additional
-        // roots but is much faster.
-        break;
-      } else  {
-        // Queue unvisited incoming nodes.
-        let newPath = {node, next: path};
-        for (let id of node.incomingEdges) {
-          let source = nodes[id];
-          if (source === undefined) {
-            throw "Incoming edge ID not found";
-          }
-          if (source.visited) {
-            continue;
-          }
-          let item = {node: source, path: newPath, length: length + 1};
-          if (source.selected) {
-            // Eager depth first traversal of previously found paths.
-            worklist.unshift(item);
-          } else {
-            worklist.push(item);
-          }
+      // Stop at the first root found. This will not report any additional
+      // roots but is much faster.
+      return count;
+    } else  {
+      // Queue unvisited incoming nodes.
+      let newPath = {node, next: path};
+      for (let id of node.incomingEdges) {
+        let source = nodes[id];
+        if (source === undefined) {
+          throw "Incoming edge ID not found";
+        }
+        if (source.visited) {
+          continue;
+        }
+        let item = {node: source, path: newPath, length: length + 1};
+        if (source.selected) {
+          // Eager depth first traversal of previously found paths.
+          worklist.unshift(item);
+        } else {
+          worklist.push(item);
         }
       }
     }
   }
 
+  console.log(`  Found no paths to ${start.fullname}`);
   return count;
 }
 

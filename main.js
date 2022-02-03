@@ -597,20 +597,6 @@ function populateInspector(node) {
 
   addInspectorButton(inspector, "Find roots", () => selectRootsFromNode(node));
 
-  if (node.incomingEdges.length) {
-    let count = node.incomingEdges.length;
-    addInspectorLine(inspector, `Incoming edges (${count}):`);
-    for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      let target = nodes[node.incomingEdges[i]];
-      let name = node.incomingEdgeNames[i];
-      let addr = target.address.toString(16);
-      addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
-    }
-    if (count > maxEdges) {
-      addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
-    }
-  }
-
   if (node.outgoingEdges.length) {
     let count = node.outgoingEdges.length;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
@@ -625,6 +611,19 @@ function populateInspector(node) {
     }
   }
 
+  if (node.incomingEdges.length) {
+    let count = node.incomingEdges.length;
+    addInspectorLine(inspector, `Incoming edges (${count}):`);
+    for (let i = 0; i < Math.min(count, maxEdges); i++) {
+      let target = nodes[node.incomingEdges[i]];
+      let name = node.incomingEdgeNames[i];
+      let addr = target.address.toString(16);
+      addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
+    }
+    if (count > maxEdges) {
+      addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
+    }
+  }
 }
 
 function addInspectorLine(inspector, text, indent, node) {

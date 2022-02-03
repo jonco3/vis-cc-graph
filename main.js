@@ -608,6 +608,12 @@ function populateInspector(node) {
 
   addInspectorButton(inspector, "Find roots", () => selectRootsFromNode(node));
 
+  if (node.rc === -1) {
+    addInspectorButton(inspector, "Find CC pred", () => selectCCPredecessor(node));
+  } else {
+    addInspectorButton(inspector, "Find GC pred", () => selectGCPredecessor(node));
+  }
+
   if (node.outgoingEdges.length) {
     let count = node.outgoingEdges.length;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
@@ -725,6 +731,16 @@ async function selectPathsBetween(a, b) {
 
 async function selectPathBetween(from, to) {
   selectPathWithBFS(from, node => node === to, () => undefined, 0);
+}
+
+async function selectGCPredecessor(from) {
+  selectPathWithBFS(from, node => node.rc === -1, () => undefined, 0);
+  display();
+}
+
+async function selectCCPredecessor(from) {
+  selectPathWithBFS(from, node => node.rc !== -1, () => undefined, 0);
+  display();
 }
 
 async function selectNodes() {

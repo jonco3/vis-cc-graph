@@ -416,7 +416,9 @@ function readConfig() {
   let showLabels =
       document.getElementById("toggleLabels").value.startsWith("Hide");
 
-  return {filter, roots, maxDepth, incoming, outgoing, limit, showLabels};
+  let allEdges = document.getElementById("allEdges").checked;
+
+  return {filter, roots, maxDepth, incoming, outgoing, limit, showLabels, allEdges};
 }
 
 function toggleLabels() {
@@ -911,7 +913,15 @@ function getLinks(objects, selected) {
   let links = [];
   for (let object of selected) {
     let source = object.id;
-    for (let target of object.outgoingEdges) {
+    for (let i = 0; i < object.outgoingEdges.length; i++) {
+      if (!config.allEdges) {
+        // Skip edges from JS objects to global and prototype.
+        let kind = object.outgoingEdgeNames[i];
+        if (kind === "baseshape_global" || kind === "baseshape_proto") {
+          continue;
+        }
+      }
+      let target = object.outgoingEdges[i];
       if (objects[target].selected && source !== target) {
         links.push({source, target});
       }

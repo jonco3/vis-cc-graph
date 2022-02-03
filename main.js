@@ -28,6 +28,15 @@ function init() {
     closeInspector();
   };
 
+  let updateOnEnter = event => {
+    if (event.keyCode === 10 || event.keyCode === 13) {
+      document.getElementById("update").click();
+    }
+  };
+  document.getElementById("filter").onkeydown = updateOnEnter;
+  document.getElementById("depth").onkeydown = updateOnEnter;
+  document.getElementById("limit").onkeydown = updateOnEnter;
+
   loadFromWeb("demo-graph.log.gz", true);
 }
 

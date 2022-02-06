@@ -1,5 +1,3 @@
-"use strict";
-
 /*
  * Visualise cycle collector graphs.
  */
@@ -16,7 +14,7 @@ let config;
 let state = "idle";
 let inspectorPrev;
 
-function init() {
+window.onload = () => {
   document.getElementById("upload").onclick = event => {
     document.getElementById("fileSelect").click();
   };
@@ -44,7 +42,7 @@ function init() {
 
   clearData();
   loadFromWeb(initialLogFile, true);
-}
+};
 
 function loadLogFile() {
   closeInspector();

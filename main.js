@@ -1033,7 +1033,6 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
 
     i++;
     if (i % 100000 === 0) {
-      setStatus(`Visited ${i} nodes`);
       await new Promise(requestAnimationFrame);
     }
 
@@ -1056,6 +1055,7 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
 
       // Stop at the first root found. This will not report any additional
       // roots but is much faster.
+      // todo: add option to find all roots.
       return count;
     } else  {
       // Queue unvisited incoming nodes.

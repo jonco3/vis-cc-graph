@@ -2,7 +2,7 @@
  * Parse CC and GC logs.
  */
 
-import * as main from "./main.js";  // For setStatus and related.
+import { poll } from "./main.js";
 
 let nodes;
 let strings;
@@ -23,8 +23,6 @@ export function clear() {
 }
 
 export async function parseCCLog(text) {
-  main.setStatusAndProfile(`Parsing CC log file`);
-
   maybeInit();
 
   let node;
@@ -40,8 +38,7 @@ export async function parseCCLog(text) {
 
     count++;
     if (count % 100000 === 0) {
-      main.setStatus(`Parsing log file: processed ${count} lines`);
-      await new Promise(requestAnimationFrame);
+      await poll(`Parsing log file: processed ${count} lines`);
     }
 
     if (line[0] === "#") {
@@ -175,8 +172,6 @@ export async function parseCCLog(text) {
 }
 
 export async function parseGCLog(text) {
-  main.setStatusAndProfile(`Parsing GC log file`);
-
   maybeInit();
 
   let node;
@@ -194,8 +189,7 @@ export async function parseGCLog(text) {
 
     count++;
     if (count % 100000 === 0) {
-      main.setStatus(`Parsing log file: processed ${count} lines`);
-      await new Promise(requestAnimationFrame);
+      await poll(`Parsing log file: processed ${count} lines`);
     }
 
     if (line === "# Roots.") {

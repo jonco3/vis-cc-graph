@@ -132,7 +132,7 @@ function clearDisplay() {
 let lastStatus;
 let startTime;
 
-export function setStatusAndProfile(message) {
+function setStatusAndProfile(message) {
   setStatus(message);
 
   let time = performance.now();
@@ -150,13 +150,20 @@ function setErrorStatus(message) {
   clearProfile();
 }
 
-export function setStatus(message) {
+function setStatus(message) {
   document.getElementById("message").textContent = `Status: ${message}`;
 }
 
 function clearProfile() {
   lastStatus = undefined;
   startTime = undefined;
+}
+
+// Called peridically in long running functions so the browser doesn't freeze
+// up while we're busy.
+export async function poll(message) {
+  setStatus(message);
+  return new Promise(requestAnimationFrame);
 }
 
 function clearData() {
@@ -172,6 +179,7 @@ async function parseLog(text, isFirstUserLoad) {
       clearData();
     }
     state = "parsing";
+    setStatusAndProfile(`Parsing CC log file`);
     nodes = await parser.parseCCLog(text);
     state = "idle";
     haveCCLog = true;
@@ -183,6 +191,7 @@ async function parseLog(text, isFirstUserLoad) {
       clearData();
     }
     state = "parsing";
+    setStatusAndProfile(`Parsing GC log file`);
     nodes = await parser.parseGCLog(text);
     state = "idle";
     haveGCLog = true;
@@ -647,7 +656,7 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
 
     i++;
     if (i % 100000 === 0) {
-      await new Promise(requestAnimationFrame);
+      await poll(`Graph search: processed ${i} nodes`);
     }
 
     if (predicate(node)) {

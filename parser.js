@@ -240,7 +240,34 @@ export async function parseGCLog(text) {
 
   processNewEdges(nodesAdded);
 
-  /* todo: process weak map entries */
+  let blackRoots;
+  let grayRoots;
+  for (let words of roots) {
+    let addr = parseAddr(words[0]);
+    let color = parseGCLogColor(words[1]);
+    let name = words[2];
+
+    if (!addressToIdMap.has(addr)) {
+      // todo: same bug as processNewEdges
+      // throw `Unknown root address: ${words.join(" ")}`;
+      continue;
+    }
+    let id = addressToIdMap.get(addr);
+    let node = nodes[id];
+    ensureMatch("address", node.address, addr);
+
+    // Hack: use special hardcoded addresses for dummy root set nodes.
+    let setAddr = color === "black" ? 1 : 2;
+    let setName = color === "black" ? "Black roots" : "Gray roots";
+    let rootSet = getOrCreateNode('GC', setAddr, -1, color, setName,
+                                  "Synthetic root set node");
+    createEdge(rootSet, node, name);
+
+    // todo: if we have CC data, don't include gray roots we have information
+    // about from the CC log.
+  }
+
+  // todo: process weak map entries
 
   return nodes;
 }
@@ -334,6 +361,26 @@ function createOrMergeNode(logKind, addr, rc, color, kind, line) {
     ensureMatch("color", node.color, color, line);
     node.fullname = node.fullname + " / " + line;
     node.hasGCData = true;
+  }
+
+  return node;
+}
+
+function getOrCreateNode(logKind, addr, rc, color, kind, line) {
+  if (logKind !== 'GC' && logKind !== 'CC') {
+    throw "Bad log kind";
+  }
+
+  if (!addressToIdMap.has(addr)) {
+    let node = createNode(logKind, addr, rc, color, kind, line);
+    addressToIdMap.set(addr, node.id);
+    return node;
+  }
+
+  let id = addressToIdMap.get(addr);
+  let node = nodes[id];
+  if (!node) {
+    throw `Node not found for address 0x${addr.toString(16)} id ${id}`;
   }
 
   return node;

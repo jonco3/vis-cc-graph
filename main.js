@@ -583,7 +583,7 @@ async function selectNodes() {
   for (let d of nodes) {
     d.root = d.incomingEdges.length === 0;
     d.filtered = false;
-    d.selected = !filter || d.name === config.filter;
+    d.selected = !config.filter || d.name.includes(config.filter);
     if (d.selected) {
       if (filter) {
         d.filtered = true;

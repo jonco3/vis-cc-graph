@@ -260,7 +260,7 @@ export async function parseGCLog(text) {
     let setAddr = color === "black" ? 1 : 2;
     let setName = color === "black" ? "Black roots" : "Gray roots";
     let rootSet = getOrCreateNode('GC', setAddr, -1, color, setName,
-                                  "Synthetic root set node");
+                                  setName + " (synthetic root set node)");
     createEdge(rootSet, node, name);
 
     // todo: if we have CC data, don't include gray roots we have information

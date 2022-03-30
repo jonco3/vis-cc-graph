@@ -123,7 +123,7 @@ export async function parseCCLog(text) {
         kind = words[2];
       }
       kind = internString(kind);
-      node = getOrCreateNode('CC', addr, rc, color, kind, line);
+      node = createOrMergeNode('CC', addr, rc, color, kind, line);
       if (!node.hasGCData) {
         nodesAdded.push(node);
       }
@@ -157,7 +157,7 @@ export async function parseCCLog(text) {
     });
 
     // Create a fake node for each entry.
-    let entry = getOrCreateNode('CC', 0, -1, "", "WeakMapEntry", line);
+    let entry = createNode('CC', 0, -1, "", "WeakMapEntry", line);
     if (hasMap) {
       createEdge(map, entry, "WeakMap entry");
     }
@@ -200,6 +200,9 @@ export async function parseGCLog(text) {
       section = "main";
     } else if (line[0] === "#") {
       continue;
+    } else if (line === "{") {
+      // Ignore extra JSON data after end of log.
+      break;
     } else {
       let words = line.split(" ");
 
@@ -224,7 +227,7 @@ export async function parseGCLog(text) {
           let color = parseGCLogColor(words[1]);
           let kind = internString(words[2]);
           let someKindOfName = words[3]; // todo where to put this?
-          node = getOrCreateNode('GC', addr, -1, color, kind, line);
+          node = createOrMergeNode('GC', addr, -1, color, kind, line);
           if (!node.hasCCData) {
             nodesAdded.push(node);
           }
@@ -291,7 +294,7 @@ function internString(s) {
   return s;
 }
 
-function getOrCreateNode(logKind, addr, rc, color, kind, line) {
+function createOrMergeNode(logKind, addr, rc, color, kind, line) {
   if (logKind !== 'GC' && logKind !== 'CC') {
     throw "Bad log kind";
   }

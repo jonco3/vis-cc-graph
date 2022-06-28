@@ -585,7 +585,7 @@ async function selectNodes() {
     d.filtered = false;
     d.selected = !config.filter || d.name.includes(config.filter);
     if (d.selected) {
-      if (filter) {
+      if (config.filter) {
         d.filtered = true;
       }
       count++;

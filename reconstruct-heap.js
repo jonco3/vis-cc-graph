@@ -5,6 +5,7 @@
 // (where appropriate). Then output a line for every edge to connect the
 // graph. Finally output two arrays of roots.
 
+// todo: synthesize edge names for all edges
 // todo: synthesize string nodes for missing permanent atoms (or fix dump)
 // todo: create actual scripts rather than faking them with objects?
 
@@ -22,17 +23,17 @@ let nodes = [];
 let strings = new Map();
 let addressToIdMap = new Map();
 
-const StringKind = 1;
-const ObjectKind = 2;
-const SymbolKind = 3;
-const JitcodeKind = 4;
-const ScriptKind = 5;
-const ShapeKind = 6;
-const BaseShapeKind = 7;
-const GetterSetterKind = 8;
-const PropMapKind = 9;
-const ScopeKind = 10;
-const RegExpSharedKind = 11;
+const StringKind = 1;        // Handled.
+const ObjectKind = 2;        // Handled.
+const SymbolKind = 3;        // Ignored.
+const JitcodeKind = 4;       // Ignored.
+const ScriptKind = 5;        // Treated as objects (could improve).
+const ShapeKind = 6;         // Handled as part of object handling.
+const BaseShapeKind = 7;     // Handled as part of object handling.
+const GetterSetterKind = 8;  // Ignored.
+const PropMapKind = 9;       // Handled as part of object handling.
+const ScopeKind = 10;        // Ignored.
+const RegExpSharedKind = 11; // Ignored.
 
 function parseGCLog(text) {
   let node;
@@ -219,9 +220,6 @@ function outputNodes() {
         }
       }
       print(`};`);
-      for (let i = 0; i < elementsCount; i++) {
-        print(`${name}[${i}] = undefined;`);
-      }
     } else {
       print(`// todo: node: ${node.kind} ${formatAddr(node.address)} ${node.details}`);
     }
@@ -251,7 +249,7 @@ function outputEdges() {
         print(`${nodeName(node.address)}[${elementsCount}] = ${nodeName(edge)}`);
         elementsCount++;
       } else {
-        print(`${nodeName(node.address)}.${getEdgeName(name, i)} = ${nodeName(edge)}`);
+        print(`${nodeName(node.address)}[${getEdgeName(name, i)}] = ${nodeName(edge)}`);
       }
     }
   }
@@ -285,11 +283,11 @@ function nodeName(addr) {
 }
 
 function getEdgeName(name, index) {
-  if (name.startsWith("**") || name.includes(" ") || name === "script-gcthing") {
-    return `_unknownEdge${index}`;
+  if (name.includes('"') || name === "script-gcthing") {
+    return `"_unknownEdge${index}"`;
   }
 
-  return name;
+  return `"${name}"`;
 }
 
 main(...scriptArgs);

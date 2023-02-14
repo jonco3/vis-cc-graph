@@ -1,0 +1,295 @@
+// Parse a GC heap log and output a JS program to recreate the structure of
+// that heap.
+//
+// For every node in the heap graph ouptut an expression to create a GC thing
+// (where appropriate). Then output a line for every edge to connect the
+// graph. Finally output two arrays of roots.
+
+// todo: synthesize string nodes for missing permanent atoms (or fix dump)
+// todo: create actual scripts rather than faking them with objects?
+
+function main(path) {
+  let text = os.file.readFile(path);
+  parseGCLog(text);
+
+  outputNodes();
+  outputEdges();
+  outputRoots();
+}
+
+let roots = [];
+let nodes = [];
+let strings = new Map();
+let addressToIdMap = new Map();
+
+const StringKind = 1;
+const ObjectKind = 2;
+const SymbolKind = 3;
+const JitcodeKind = 4;
+const ScriptKind = 5;
+const ShapeKind = 6;
+const BaseShapeKind = 7;
+const GetterSetterKind = 8;
+const PropMapKind = 9;
+const ScopeKind = 10;
+const RegExpSharedKind = 11;
+
+function parseGCLog(text) {
+  let node;
+  let weakMapEntries = [];
+
+  let section;
+
+  for (let match of matchLines(text)) {
+    let line = match[0];
+
+    if (line === "# Roots.") {
+      section = "roots";
+    } else if (line === "# Weak maps.") {
+      section = "weakmaps";
+    } else if (line === "==========") {
+      section = "main";
+    } else if (line[0] === "#") {
+      continue;
+    } else if (line === "{") {
+      // Ignore extra JSON data after end of log.
+      break;
+    } else {
+      let words = line.split(" ");
+
+      if (section === "roots") {
+        let addr = parseAddr(words[0]);
+        let color = parseGCLogColor(words[1]);
+        let name = words.slice(2).join(" ");
+        createRoot(addr, color, name);
+      } else if (section === "weakmaps") {
+        // todo: handle weakmaps
+      } else if (section === "main") {
+        if (words[0] !== ">") {
+          let addr = parseAddr(words[0]);
+          let color = parseGCLogColor(words[1]);
+          let name = words[2];
+          let details = words.slice(3).join(" ");
+          let kind = getNodeKind(name, details);
+          node = createNode(addr, color, kind, details);
+        } else {
+          if (!node) {
+            throw "Unexpected >";
+          }
+          let addr = parseAddr(words[1]);
+          let name = words.slice(3).join(" ");
+          node.outgoingEdges.push(addr);
+          node.outgoingEdgeNames.push(name);
+        }
+      } else {
+        throw "Bad section: " + section;
+      }
+    }
+  }
+
+  // todo: process weak map entries
+
+  return nodes;
+}
+
+function matchLines(text) {
+  return text.matchAll(/[^\n]+/g);
+}
+
+function parseAddr(string) {
+  if (!string.startsWith("0x")) {
+    throw "Expected address: " + string;
+  }
+  let addr = parseInt(string.substr(2), 16);
+  if (Number.isNaN(addr)) {
+    throw "Can't parse address: " + string;
+  }
+  return addr;
+}
+
+function formatAddr(addr) {
+  return "0x" + addr.toString(16);
+}
+
+function parseGCLogColor(string) {
+  if (string === "B") {
+    return "black";
+  }
+
+  if (string === "G") {
+    return "gray";
+  }
+
+  throw "Unrecognised GC log color: " + string;
+}
+
+function internString(s) {
+  let result = strings.get(s);
+  if (result !== undefined) {
+    return result;
+  }
+
+  strings.set(s, s);
+  return s;
+}
+
+function getNodeKind(name, details) {
+  if (name === "string" || name === "substring") {
+    return StringKind;
+  } else if (name === "symbol") {
+    return SymbolKind;
+  } else if (name === "jitcode") {
+    return JitcodeKind;
+  } else if (name === "script") {
+    return ScriptKind;
+  } else if (name === "shape") {
+    return ShapeKind;
+  } else if (name === "base_shape") {
+    return BaseShapeKind;
+  } else if (name === "getter_setter") {
+    return GetterSetterKind;
+  } else if (name === "prop_map") {
+    return PropMapKind;
+  } else if (name === "scope") {
+    return ScopeKind;
+  } else if (name === "reg_exp_shared") {
+    return RegExpSharedKind;
+  } else if (name === "Function" || details.endsWith("<unknown object>")) {
+    return ObjectKind;
+  } else {
+    throw `unknown kind: ${name} ${details}`;
+    return name;
+  }
+}
+
+function createRoot(addr, color, name) {
+  let root = {address: addr,
+              color,
+              name};
+  roots.push(root);
+  return root;
+}
+
+function createNode(addr, color, kind, details) {
+  if (addressToIdMap.has(addr)) {
+    throw "Duplicate address";
+  }
+
+  let node = {id: nodes.length,
+              address: addr,
+              color,
+              kind,
+              details,
+              outgoingEdges: [],
+              outgoingEdgeNames: []};
+  nodes.push(node);
+
+  addressToIdMap.set(addr, node.id);
+
+  return node;
+}
+
+function createEdge(source, target, name) {
+  // Must be called after edge address are replaced with ids!
+  source.outgoingEdges.push(target.id);
+  source.outgoingEdgeNames.push(name);
+}
+
+function outputNodes() {
+  for (let node of nodes) {
+    let name = nodeName(node.address);
+    if (node.kind === StringKind) {
+      // Don't use real string contents, just make a unique string.
+      print(`const ${name} = "${name}"`);
+    } else if (node.kind === ObjectKind || node.kind === ScriptKind) {
+      print(`const ${name} = {`);
+      let elementsCount = 0;
+      for (let i = 0; i < node.outgoingEdges.length; i++) {
+        let edge = node.outgoingEdges[i];
+        let edgeName = node.outgoingEdgeNames[i];
+
+        if (!includeEdge(edge)) {
+          continue;
+        }
+
+        if (edgeName.startsWith("objectElements")) {
+          elementsCount++;
+        } else {
+          print(`  ${getEdgeName(edgeName, i)}: undefined,`);
+        }
+      }
+      print(`};`);
+      for (let i = 0; i < elementsCount; i++) {
+        print(`${name}[${i}] = undefined;`);
+      }
+    } else {
+      print(`// todo: node: ${node.kind} ${formatAddr(node.address)} ${node.details}`);
+    }
+  }
+}
+
+function outputEdges() {
+  for (let node of nodes) {
+    if (node.kind !== ObjectKind) {
+      continue;
+    }
+
+    let elementsCount = 0;
+    for (let i = 0; i < node.outgoingEdges.length; i++) {
+      let edge = node.outgoingEdges[i];
+      let name = node.outgoingEdgeNames[i];
+      if (!addressToIdMap.has(edge)) {
+        // Permanent atoms are not dumped.
+        continue;
+      }
+
+      if (!includeEdge(edge)) {
+        continue;
+      }
+
+      if (name.startsWith("objectElements")) {
+        print(`${nodeName(node.address)}[${elementsCount}] = ${nodeName(edge)}`);
+        elementsCount++;
+      } else {
+        print(`${nodeName(node.address)}.${getEdgeName(name, i)} = ${nodeName(edge)}`);
+      }
+    }
+  }
+}
+
+function includeEdge(edge) {
+  if (!addressToIdMap.has(edge)) {
+    // Permanent atoms are not dumped.
+    return false;
+  }
+
+  let target = nodes[addressToIdMap.get(edge)];
+  return target.kind === StringKind ||
+    target.kind === ObjectKind ||
+    target.kind === ScriptKind;
+}
+
+function outputRoots() {
+  for (let root of roots) {
+    if (!addressToIdMap.has(root.address)) {
+      // Permanent atoms are not dumped.
+      continue;
+    }
+
+    print(`// todo: root: ${formatAddr(root.address)}`)
+  }
+}
+
+function nodeName(addr) {
+  return "node_" + formatAddr(addr);
+}
+
+function getEdgeName(name, index) {
+  if (name.startsWith("**") || name.includes(" ") || name === "script-gcthing") {
+    return `_unknownEdge${index}`;
+  }
+
+  return name;
+}
+
+main(...scriptArgs);

@@ -5,7 +5,6 @@
 // (where appropriate). Then output a line for every edge to connect the
 // graph. Finally output two arrays of roots.
 
-// todo: synthesize string nodes for missing permanent atoms (or fix dump)
 // todo: create actual scripts rather than faking them with objects?
 
 function main(path) {
@@ -26,7 +25,7 @@ let edgeNameCount = 0;
 
 const StringKind = 1;        // Handled.
 const ObjectKind = 2;        // Handled.
-const SymbolKind = 3;        // Ignored.
+const SymbolKind = 3;        // Handled.
 const JitcodeKind = 4;       // Ignored.
 const ScriptKind = 5;        // Treated as objects (could improve).
 const ShapeKind = 6;         // Handled as part of object handling.
@@ -232,8 +231,8 @@ function outputNodes() {
         }
       }
       print(`};`);
-    } else {
-      print(`// todo: node: ${node.kind} ${formatAddr(node.address)} ${node.details}`);
+    } else if (node.kind === SymbolKind) {
+      print(`const ${name} = Symbol();`);
     }
   }
 }
@@ -276,6 +275,7 @@ function includeEdge(edge) {
 
   let target = nodes[addressToIdMap.get(edge)];
   return target.kind === StringKind ||
+         target.kind === SymbolKind ||
          target.kind === ObjectKind ||
          target.kind === ScriptKind;
 }

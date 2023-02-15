@@ -250,8 +250,7 @@ function outputEdges() {
       let edge = node.outgoingEdges[i];
       let name = node.outgoingEdgeNames[i];
       if (!addressToIdMap.has(edge)) {
-        // Permanent atoms are not dumped.
-        continue;
+        throw "Unknown edge target";
       }
 
       if (!includeEdge(edge)) {
@@ -272,8 +271,7 @@ function outputEdges() {
 
 function includeEdge(edge) {
   if (!addressToIdMap.has(edge)) {
-    // Permanent atoms are not dumped.
-    return false;
+    throw "Unknown edge target";
   }
 
   let target = nodes[addressToIdMap.get(edge)];
@@ -293,8 +291,7 @@ function outputRootArray(color, roots) {
   let i = 0;
   for (let root of roots) {
     if (!addressToIdMap.has(root.address)) {
-      // Permanent atoms are not dumped.
-      continue;
+      throw "Unknown root address";
     }
 
     print(`${color}Root()[${i++}] = ${nodeName(root.address)};`);

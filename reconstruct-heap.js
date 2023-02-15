@@ -5,7 +5,6 @@
 // (where appropriate). Then output a line for every edge to connect the
 // graph. Finally output two arrays of roots.
 
-// todo: synthesize edge names for all edges
 // todo: synthesize string nodes for missing permanent atoms (or fix dump)
 // todo: create actual scripts rather than faking them with objects?
 

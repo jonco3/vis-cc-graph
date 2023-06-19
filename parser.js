@@ -84,8 +84,7 @@ export async function parseCCLog(text) {
       }
       if (!node.hasGCData) {
         let addr = parseAddr(words[1]);
-        let kind = words.slice(2).join(" ");
-        kind = internString(kind);
+        let kind = internString(words.slice(2).join(" "));
         node.outgoingEdges.push(addr);
         node.outgoingEdgeNames.push(kind);
       }
@@ -217,7 +216,7 @@ export async function parseGCLog(text) {
           }
           if (!node.hasCCData) {
             let addr = parseAddr(words[1]);
-            let kind = words.slice(3).join(" ");
+            let kind = internString(words.slice(3).join(" "));
             node.outgoingEdges.push(addr);
             node.outgoingEdgeNames.push(kind);
           }

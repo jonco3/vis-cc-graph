@@ -273,6 +273,14 @@ function toggleLabels() {
     `${config.showLabels ? "Hide" : "Show"} labels`;
 }
 
+function fullname(node) {
+  let name = `0x${node.address.toString(16)} ${node.color} ${node.name}`;
+  if (node.hasCCData) {
+    name += ` rc=${node.rc}`;
+  }
+  return name;
+}
+
 function display() {
   if (state !== "idle") {
     throw "Bad state: " + state;
@@ -341,7 +349,7 @@ function display() {
       .attr('y', 3);
   }
   nodeGroup.append("title")
-    .text(function(d) { return d.fullname; });
+    .text(function(d) { return fullname(d); });
 
   node.exit().remove();
 
@@ -447,7 +455,7 @@ function populateInspector(node) {
 
   const maxEdges = 60;
 
-  addInspectorLine(inspector, node.fullname);
+  addInspectorLine(inspector, fullname(node));
 
   addInspectorButton(inspector, "Hide", () => deselectNode(node));
   addInspectorButton(inspector, "Show adjacent", () => selectRelatedNodes(node, false));
@@ -576,7 +584,7 @@ async function selectRootsFromNode(node) {
 }
 
 async function selectPathsBetween(a, b) {
-  console.log(`Selecting paths between ${a.fullname} and ${b.fullname}`);
+  console.log(`Selecting paths between ${fullname(a)} and ${fullname(b)}`);
   selectPathBetween(a, b);
   selectPathBetween(b, a);
   display();
@@ -642,7 +650,7 @@ async function selectNodes() {
 
 async function selectRoots(selected, count) {
   for (let start of selected) {
-    setStatus(`Searching for roots for ${start.fullname}`);
+    setStatus(`Searching for roots for ${fullname(start)}`);
     count += selectPathWithBFS(start,
                                node => node.incomingEdges.length === 0,
                                node => { node.root = true; },
@@ -682,7 +690,7 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
 
     if (predicate(node)) {
       // Found a root, select nodes on its path.
-      console.log(`  Found path of length ${length} from ${node.fullname} to ${start.fullname}`);
+      console.log(`  Found path of length ${length} from ${fullname(node)} to ${fullname(start)}`);
       onFound(node);
       do {
         node.selected = true;
@@ -723,7 +731,7 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
     }
   }
 
-  console.log(`  Found no paths to ${start.fullname}`);
+  console.log(`  Found no paths to ${fullname(start)}`);
   return count;
 }
 

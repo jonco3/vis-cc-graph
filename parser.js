@@ -150,13 +150,20 @@ export async function parseCCLog(text) {
     let [key, delegate, value] = fields.map(addr => {
       let id = addressToIdMap.get(addr);
       if (id === undefined) {
-        throw "WeakMapEntry field not found: " + line;
+        // todo: this happens sometimes
+        //throw "WeakMapEntry field not found: " + line;
+        console.log("WeakMapEntry field not found: " + line);
+        return undefined;
       }
       return nodes[id];
     });
 
+    if (!key || !delegate || !value) {
+      continue;
+    }
+
     // Create a fake node for each entry.
-    let entry = createNode('CC', 0, -1, "", "WeakMapEntry", line);
+    let entry = createNode('CC', 0, -1, "", "WeakMapEntry");
     if (hasMap) {
       createEdge(map, entry, "WeakMap entry");
     }
@@ -258,8 +265,7 @@ export async function parseGCLog(text) {
     // Hack: use special hardcoded addresses for dummy root set nodes.
     let setAddr = color === "black" ? 1 : 2;
     let setName = color === "black" ? "Black roots" : "Gray roots";
-    let rootSet = getOrCreateNode('GC', setAddr, -1, color, setName,
-                                  setName + " (synthetic root set node)");
+    let rootSet = getOrCreateNode('GC', setAddr, -1, color, setName);
     createEdge(rootSet, node, name);
 
     // todo: if we have CC data, don't include gray roots we have information
@@ -326,11 +332,11 @@ function createOrMergeNode(logKind, addr, rc, color, kind, line) {
   }
 
   if (addr === 0) {
-    return createNode(logKind, addr, rc, color, kind, line);
+    return createNode(logKind, addr, rc, color, kind);
   }
 
   if (!addressToIdMap.has(addr)) {
-    let node = createNode(logKind, addr, rc, color, kind, line);
+    let node = createNode(logKind, addr, rc, color, kind);
     addressToIdMap.set(addr, node.id);
     return node;
   }
@@ -352,26 +358,24 @@ function createOrMergeNode(logKind, addr, rc, color, kind, line) {
     node.rc = rc;
     ensureMatch("color", node.color, color, line);
     node.name = kind;
-    node.fullname = line + " / " + node.fullname;
     node.hasCCData = true;
   } else {
     // Merge GC data into existing CC log node.
     ensureMatch("address", node.address, addr, line);
     ensureMatch("color", node.color, color, line);
-    node.fullname = node.fullname + " / " + line;
     node.hasGCData = true;
   }
 
   return node;
 }
 
-function getOrCreateNode(logKind, addr, rc, color, kind, line) {
+function getOrCreateNode(logKind, addr, rc, color, kind) {
   if (logKind !== 'GC' && logKind !== 'CC') {
     throw "Bad log kind";
   }
 
   if (!addressToIdMap.has(addr)) {
-    let node = createNode(logKind, addr, rc, color, kind, line);
+    let node = createNode(logKind, addr, rc, color, kind);
     addressToIdMap.set(addr, node.id);
     return node;
   }
@@ -385,13 +389,12 @@ function getOrCreateNode(logKind, addr, rc, color, kind, line) {
   return node;
 }
 
-function createNode(logKind, addr, rc, color, kind, line) {
+function createNode(logKind, addr, rc, color, kind) {
   let node = {id: nodes.length,
               address: addr,
               rc,
               color,
               name: kind,
-              fullname: line,
               incomingEdges: [],
               incomingEdgeNames: [],
               outgoingEdges: [],

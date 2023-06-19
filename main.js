@@ -395,11 +395,9 @@ function display() {
   function ticked() {
     const radius = 10;
     nodeGroup
-      .attr("cx", function(d) { return d.x = Math.max(radius, Math.min(width - radius, d.x)); })
-      .attr("cy", function(d) { return d.y = Math.max(radius, Math.min(height - radius, d.y)); })
       .attr("transform", function(d) {
         return "translate(" + d.x + "," + d.y + ")";
-      })
+      });
     linkLine
       .attr("x1", function(d) { return d.source.x; })
       .attr("y1", function(d) { return d.source.y; })

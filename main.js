@@ -9,10 +9,12 @@ const initialLogFile = "demo-graph.log.gz";
 let nodes;
 let haveCCLog;
 let haveGCLog;
-let filename;
+let ccLogFilename = "";
+let gcLogFilename = "";
 let config;
 let state = "idle";
 let inspectorPrev;
+let loadCount = 0;
 
 window.onload = () => {
   document.getElementById("upload").onclick = event => {
@@ -115,9 +117,8 @@ function decompress(name, compressedData) {
 }
 
 function loaded(name, text) {
-  let isFirstUserLoad = filename === initialLogFile;
-  filename = name;
-  parseLog(text, isFirstUserLoad).then(update).catch(e => {
+  loadCount++;
+  parseLog(name, text, loadCount == 2).then(update).catch(e => {
     setErrorStatus(`Error parsing ${name}: ${e}`);
     throw e;
   });
@@ -167,14 +168,18 @@ export async function poll(message) {
 }
 
 function clearData() {
+  console.log("Clearing all data");
   parser.clear();
   nodes = undefined;
   haveCCLog = false;
   haveGCLog = false;
+  gcLogFilename = "";
+  ccLogFilename = "";
 }
 
-async function parseLog(text, isFirstUserLoad) {
+async function parseLog(filename, text, isFirstUserLoad) {
   if (text.startsWith("# WantAllTraces")) {
+    // Cycle collector log.
     if (haveCCLog || isFirstUserLoad) {
       clearData();
     }
@@ -183,10 +188,13 @@ async function parseLog(text, isFirstUserLoad) {
     nodes = await parser.parseCCLog(text);
     state = "idle";
     haveCCLog = true;
+    ccLogFilename = filename;
+    updateFilenameDisplay();
     return;
   }
 
   if (text.startsWith("# Roots")) {
+    // Garbage collector log.
     if (haveGCLog || isFirstUserLoad) {
       clearData();
     }
@@ -195,10 +203,23 @@ async function parseLog(text, isFirstUserLoad) {
     nodes = await parser.parseGCLog(text);
     state = "idle";
     haveGCLog = true;
+    gcLogFilename = filename;
+    updateFilenameDisplay();
     return;
   }
 
   throw "Unrecognised log file";
+}
+
+function updateFilenameDisplay() {
+  let elements = [];
+  if (haveCCLog) {
+    elements.push(ccLogFilename);
+  }
+  if (haveGCLog) {
+    elements.push(gcLogFilename);
+  }
+  document.getElementById("filename").textContent = "Loaded: " + elements.join(", ");
 }
 
 async function update() {

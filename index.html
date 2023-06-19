@@ -8,9 +8,14 @@
     <script src="main.js" type="module"></script>
   </head>
   <body>
-    <div id="controls">
+    <div id="load_control">
       <form>
         <input id="upload" type="button" value="Upload Log"></input>
+        <span id="filename"></span>
+      </form>
+    </div>
+    <div id="display_controls">
+      <form>
         <input id="fileSelect" type="file" accept=".txt, .log, .gz" style="display:none">
         <label>Filter:</label>
         <input id="filter" type="text" value="Document"></input>

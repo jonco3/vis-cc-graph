@@ -8,32 +8,30 @@
     <script src="main.js" type="module"></script>
   </head>
   <body>
-    <div id="load_control">
-      <form>
-        <input id="upload" type="button" value="Upload Log"></input>
-        <span id="filename"></span>
-      </form>
-    </div>
-    <div id="display_controls">
-      <form>
-        <input id="fileSelect" type="file" accept=".txt, .log, .gz" style="display:none">
-        <label>Filter:</label>
-        <input id="filter" type="text" value="Document"></input>
-        <label>Roots:</label>
-        <input id="roots" type="checkbox"></input>
-        <label>Depth:</label>
-        <input id="depth" type="text" value="1" size="1" maxlength="1"></input>
-        <label for="incoming">In:</label>
-        <input id="incoming" type="checkbox" checked></input>
-        <label for="outgoing">Out:</label>
-        <input id="outgoing" type="checkbox" checked></input>
-        <label>Limit:</label>
-        <input id="limit" type="text" value="2000" size="5"></input>
-        <label for="allEdges">All edges:</label>
-        <input id="allEdges" type="checkbox"></input>
-        <input id="update" type="button" value="Update"></input>
-        <input id="toggleLabels" type="button" value="Hide labels"></input>
-      </form>
+    <div id="controls">
+        <form>
+          <input id="upload" type="button" value="Upload Log"></input>
+          <span id="filename"></span>
+        </form>
+        <form>
+          <input id="fileSelect" type="file" accept=".txt, .log, .gz" style="display:none">
+          <label>Filter:</label>
+          <input id="filter" type="text" value="Document"></input>
+          <label>Roots:</label>
+          <input id="roots" type="checkbox"></input>
+          <label>Depth:</label>
+          <input id="depth" type="text" value="1" size="1" maxlength="1"></input>
+          <label for="incoming">In:</label>
+          <input id="incoming" type="checkbox" checked></input>
+          <label for="outgoing">Out:</label>
+          <input id="outgoing" type="checkbox" checked></input>
+          <label>Limit:</label>
+          <input id="limit" type="text" value="2000" size="5"></input>
+          <label for="allEdges">All edges:</label>
+          <input id="allEdges" type="checkbox"></input>
+          <input id="update" type="button" value="Update"></input>
+          <input id="toggleLabels" type="button" value="Hide labels"></input>
+        </form>
     </div>
     <div id="inspector" class="inspector">
       <a href="javascript:void(0)" id="inspectorClose" class="closebtn">&times;</a>

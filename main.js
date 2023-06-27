@@ -55,13 +55,13 @@ function loadLogFile () {
   const file = document.getElementById('fileSelect').files[0];
   const name = file.name;
 
-  setStatusAndProfile(`Loading ${name}`);
+  setStatus(`Loading ${name}`);
 
   const isCompressed = name.endsWith('.gz');
 
   const request = new FileReader();
   request.onerror = event => {
-    setErrorStatus(`Error loading ${name}: ${event.message}`);
+    setStatus(`Error loading ${name}: ${event.message}`);
   };
   request.onprogress = event => {
     const percent = Math.floor(100 * event.loaded / event.total);
@@ -84,7 +84,7 @@ function loadLogFile () {
 function loadFromWeb (name, isCompressed) {
   const request = new XMLHttpRequest();
   request.onerror = event => {
-    setErrorStatus(`Error loading ${name}: ${event.message}`);
+    setStatus(`Error loading ${name}: ${event.message}`);
   };
   request.onprogress = event => {
     const percent = Math.floor(100 * event.loaded / event.total);
@@ -105,12 +105,12 @@ function loadFromWeb (name, isCompressed) {
 }
 
 function decompress (name, compressedData) {
-  setStatusAndProfile(`Decompressing ${name}`);
+  setStatus(`Decompressing ${name}`);
   let text;
   try {
     text = pako.inflate(compressedData, { to: 'string' });
   } catch (e) {
-    setErrorStatus(`Error decompressing ${name}: ${e}`);
+    setStatus(`Error decompressing ${name}: ${e}`);
     throw e;
   }
   loaded(name, text);
@@ -120,7 +120,7 @@ function loaded (name, text) {
   loadCount++;
   parseLog(name, text, loadCount == 2).then(update).catch(e => {
     clearData();
-    setErrorStatus(`Error parsing ${name}: ${e}`);
+    setStatus(`Error parsing ${name}: ${e}`);
     throw e;
   });
 }
@@ -131,34 +131,8 @@ function clearDisplay () {
   }
 }
 
-let lastStatus;
-let startTime;
-
-function setStatusAndProfile (message) {
-  setStatus(message);
-
-  const time = performance.now();
-  if (lastStatus) {
-    const duration = time - startTime;
-    console.log(`${lastStatus} (${duration} ms)`);
-  }
-
-  startTime = time;
-  lastStatus = message;
-}
-
-function setErrorStatus (message) {
-  setStatus(message);
-  clearProfile();
-}
-
 function setStatus (message) {
   document.getElementById('message').textContent = `Status: ${message}`;
-}
-
-function clearProfile () {
-  lastStatus = undefined;
-  startTime = undefined;
 }
 
 // Called peridically in long running functions so the browser doesn't freeze
@@ -184,7 +158,7 @@ async function parseLog (filename, text, isFirstUserLoad) {
       clearData();
     }
     state = 'parsing';
-    setStatusAndProfile('Parsing CC log file');
+    setStatus('Parsing CC log file');
     nodes = await parser.parseCCLog(text, nodes);
     state = 'idle';
     haveCCLog = true;
@@ -199,7 +173,7 @@ async function parseLog (filename, text, isFirstUserLoad) {
       clearData();
     }
     state = 'parsing';
-    setStatusAndProfile('Parsing GC log file');
+    setStatus('Parsing GC log file');
     nodes = await parser.parseGCLog(text, nodes);
     state = 'idle';
     haveGCLog = true;
@@ -234,7 +208,6 @@ async function update () {
   state = 'idle';
 
   display();
-  clearProfile();
 }
 
 function readConfig () {
@@ -286,7 +259,7 @@ function display () {
     throw 'Bad state: ' + state;
   }
 
-  setStatusAndProfile('Building display');
+  setStatus('Building display');
 
   const nodeList = getSelectedNodes();
   const links = getLinks(nodes, nodeList);
@@ -390,7 +363,7 @@ function display () {
   } else {
     logKind = 'GC';
   }
-  setStatusAndProfile(`Displaying ${nodeList.length} out of ${nodes.length} nodes from ${logKind} logs`);
+  setStatus(`Displaying ${nodeList.length} out of ${nodes.length} nodes from ${logKind} logs`);
 
   function ticked () {
     const radius = 10;
@@ -603,7 +576,7 @@ async function selectCCPredecessor (from) {
 }
 
 async function selectNodes () {
-  setStatusAndProfile('Selecting nodes');
+  setStatus('Selecting nodes');
 
   let count = 0;
   const selected = [];

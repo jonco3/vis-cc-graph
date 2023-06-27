@@ -2,64 +2,64 @@
  * Visualise cycle collector graphs.
  */
 
-import * as parser from "./parser.js";
+import * as parser from './parser.js';
 
-const initialLogFile = "demo-graph.log.gz";
+const initialLogFile = 'demo-graph.log.gz';
 
 let nodes;
 let haveCCLog;
 let haveGCLog;
-let ccLogFilename = "";
-let gcLogFilename = "";
+let ccLogFilename = '';
+let gcLogFilename = '';
 let config;
-let state = "idle";
+let state = 'idle';
 let inspectorPrev;
 let loadCount = 0;
 
 window.onload = () => {
-  document.getElementById("upload").onclick = event => {
-    document.getElementById("fileSelect").click();
+  document.getElementById('upload').onclick = event => {
+    document.getElementById('fileSelect').click();
   };
-  document.getElementById("fileSelect").onchange = () => {
+  document.getElementById('fileSelect').onchange = () => {
     loadLogFile();
   };
-  document.getElementById("update").onclick = () => {
+  document.getElementById('update').onclick = () => {
     update();
   };
-  document.getElementById("toggleLabels").onclick = () => {
+  document.getElementById('toggleLabels').onclick = () => {
     toggleLabels();
   };
-  document.getElementById("inspectorClose").onclick = () => {
+  document.getElementById('inspectorClose').onclick = () => {
     closeInspector();
   };
 
-  let updateOnEnter = event => {
+  const updateOnEnter = event => {
     if (event.keyCode === 10 || event.keyCode === 13) {
-      document.getElementById("update").click();
+      document.getElementById('update').click();
     }
   };
-  document.getElementById("filter").onkeydown = updateOnEnter;
-  document.getElementById("depth").onkeydown = updateOnEnter;
-  document.getElementById("limit").onkeydown = updateOnEnter;
+  document.getElementById('filter').onkeydown = updateOnEnter;
+  document.getElementById('depth').onkeydown = updateOnEnter;
+  document.getElementById('limit').onkeydown = updateOnEnter;
 
   clearData();
   loadFromWeb(initialLogFile, true);
 };
 
-function loadLogFile() {
+function loadLogFile () {
   closeInspector();
   inspectorPrev = undefined;
 
   clearDisplay();
 
-  let file = document.getElementById("fileSelect").files[0];
-  let name = file.name;
+  const file = document.getElementById('fileSelect').files[0];
+  const name = file.name;
 
   setStatusAndProfile(`Loading ${name}`);
 
-  let isCompressed = name.endsWith(".gz");
+  const isCompressed = name.endsWith('.gz');
 
-  let request = new FileReader();
+  const request = new FileReader();
   request.onerror = event => {
     setErrorStatus(`Error loading ${name}: ${event.message}`);
   };
@@ -81,8 +81,8 @@ function loadLogFile() {
   }
 }
 
-function loadFromWeb(name, isCompressed) {
-  let request = new XMLHttpRequest();
+function loadFromWeb (name, isCompressed) {
+  const request = new XMLHttpRequest();
   request.onerror = event => {
     setErrorStatus(`Error loading ${name}: ${event.message}`);
   };
@@ -97,14 +97,14 @@ function loadFromWeb(name, isCompressed) {
       loaded(name, request.responseText);
     }
   };
-  request.open("GET", name);
+  request.open('GET', name);
   if (isCompressed) {
-    request.responseType = "arraybuffer";
+    request.responseType = 'arraybuffer';
   }
   request.send();
 }
 
-function decompress(name, compressedData) {
+function decompress (name, compressedData) {
   setStatusAndProfile(`Decompressing ${name}`);
   let text;
   try {
@@ -116,7 +116,7 @@ function decompress(name, compressedData) {
   loaded(name, text);
 }
 
-function loaded(name, text) {
+function loaded (name, text) {
   loadCount++;
   parseLog(name, text, loadCount == 2).then(update).catch(e => {
     clearData();
@@ -125,8 +125,8 @@ function loaded(name, text) {
   });
 }
 
-function clearDisplay() {
-  for (let element of document.getElementsByTagName("svg")) {
+function clearDisplay () {
+  for (const element of document.getElementsByTagName('svg')) {
     element.remove();
   }
 }
@@ -134,12 +134,12 @@ function clearDisplay() {
 let lastStatus;
 let startTime;
 
-function setStatusAndProfile(message) {
+function setStatusAndProfile (message) {
   setStatus(message);
 
-  let time = performance.now();
+  const time = performance.now();
   if (lastStatus) {
-    let duration = time - startTime;
+    const duration = time - startTime;
     console.log(`${lastStatus} (${duration} ms)`);
   }
 
@@ -147,133 +147,133 @@ function setStatusAndProfile(message) {
   lastStatus = message;
 }
 
-function setErrorStatus(message) {
+function setErrorStatus (message) {
   setStatus(message);
   clearProfile();
 }
 
-function setStatus(message) {
-  document.getElementById("message").textContent = `Status: ${message}`;
+function setStatus (message) {
+  document.getElementById('message').textContent = `Status: ${message}`;
 }
 
-function clearProfile() {
+function clearProfile () {
   lastStatus = undefined;
   startTime = undefined;
 }
 
 // Called peridically in long running functions so the browser doesn't freeze
 // up while we're busy.
-export async function poll(message) {
+export async function poll (message) {
   setStatus(message);
   return new Promise(requestAnimationFrame);
 }
 
-function clearData() {
-  console.log("Clearing all data");
+function clearData () {
+  console.log('Clearing all data');
   nodes = undefined;
   haveCCLog = false;
   haveGCLog = false;
-  gcLogFilename = "";
-  ccLogFilename = "";
+  gcLogFilename = '';
+  ccLogFilename = '';
 }
 
-async function parseLog(filename, text, isFirstUserLoad) {
-  if (text.startsWith("# WantAllTraces")) {
+async function parseLog (filename, text, isFirstUserLoad) {
+  if (text.startsWith('# WantAllTraces')) {
     // Cycle collector log.
     if (haveCCLog || isFirstUserLoad) {
       clearData();
     }
-    state = "parsing";
-    setStatusAndProfile(`Parsing CC log file`);
+    state = 'parsing';
+    setStatusAndProfile('Parsing CC log file');
     nodes = await parser.parseCCLog(text, nodes);
-    state = "idle";
+    state = 'idle';
     haveCCLog = true;
     ccLogFilename = filename;
     updateFilenameDisplay();
     return;
   }
 
-  if (text.startsWith("# Roots")) {
+  if (text.startsWith('# Roots')) {
     // Garbage collector log.
     if (haveGCLog || isFirstUserLoad) {
       clearData();
     }
-    state = "parsing";
-    setStatusAndProfile(`Parsing GC log file`);
+    state = 'parsing';
+    setStatusAndProfile('Parsing GC log file');
     nodes = await parser.parseGCLog(text, nodes);
-    state = "idle";
+    state = 'idle';
     haveGCLog = true;
     gcLogFilename = filename;
     updateFilenameDisplay();
     return;
   }
 
-  throw "Unrecognised log file";
+  throw 'Unrecognised log file';
 }
 
-function updateFilenameDisplay() {
-  let elements = [];
+function updateFilenameDisplay () {
+  const elements = [];
   if (haveCCLog) {
     elements.push(ccLogFilename);
   }
   if (haveGCLog) {
     elements.push(gcLogFilename);
   }
-  document.getElementById("filename").textContent = "Loaded: " + elements.join(", ");
+  document.getElementById('filename').textContent = 'Loaded: ' + elements.join(', ');
 }
 
-async function update() {
-  if (state !== "idle") {
-    throw "Bad state: " + state;
+async function update () {
+  if (state !== 'idle') {
+    throw 'Bad state: ' + state;
   }
-  state = "updating";
+  state = 'updating';
 
   closeInspector();
   config = readConfig();
-  let selectedCount = await selectNodes();
-  state = "idle";
+  const selectedCount = await selectNodes();
+  state = 'idle';
 
   display();
   clearProfile();
 }
 
-function readConfig() {
-  let filter = document.getElementById("filter").value;
+function readConfig () {
+  let filter = document.getElementById('filter').value;
   if (!filter) {
-    filter = "";
+    filter = '';
   }
 
-  let roots = document.getElementById("roots").checked;
+  const roots = document.getElementById('roots').checked;
 
-  let maxDepth = parseInt(document.getElementById("depth").value);
+  let maxDepth = parseInt(document.getElementById('depth').value);
   if (!maxDepth || Number.isNaN(maxDepth)) {
     maxDepth = 0;
   }
 
-  let incoming = document.getElementById("incoming").checked;
-  let outgoing = document.getElementById("outgoing").checked;
+  const incoming = document.getElementById('incoming').checked;
+  const outgoing = document.getElementById('outgoing').checked;
 
-  let limit = parseInt(document.getElementById("limit").value);
+  let limit = parseInt(document.getElementById('limit').value);
   if (!limit || Number.isNaN(limit)) {
     limit = 2000;
   }
 
-  let showLabels =
-      document.getElementById("toggleLabels").value.startsWith("Hide");
+  const showLabels =
+      document.getElementById('toggleLabels').value.startsWith('Hide');
 
-  let allEdges = document.getElementById("allEdges").checked;
+  const allEdges = document.getElementById('allEdges').checked;
 
-  return {filter, roots, maxDepth, incoming, outgoing, limit, showLabels, allEdges};
+  return { filter, roots, maxDepth, incoming, outgoing, limit, showLabels, allEdges };
 }
 
-function toggleLabels() {
+function toggleLabels () {
   config.showLabels = !config.showLabels;
   display();
-  document.getElementById("toggleLabels").value =
-    `${config.showLabels ? "Hide" : "Show"} labels`;
+  document.getElementById('toggleLabels').value =
+    `${config.showLabels ? 'Hide' : 'Show'} labels`;
 }
 
-function fullname(node) {
+function fullname (node) {
   let name = `0x${node.address.toString(16)} ${node.color} ${node.name}`;
   if (node.hasCCData) {
     name += ` rc=${node.rc}`;
@@ -281,132 +281,132 @@ function fullname(node) {
   return name;
 }
 
-function display() {
-  if (state !== "idle") {
-    throw "Bad state: " + state;
+function display () {
+  if (state !== 'idle') {
+    throw 'Bad state: ' + state;
   }
 
-  setStatusAndProfile(`Building display`);
+  setStatusAndProfile('Building display');
 
-  let nodeList = getSelectedNodes();
-  let links = getLinks(nodes, nodeList);
+  const nodeList = getSelectedNodes();
+  const links = getLinks(nodes, nodeList);
 
-  let count = nodeList.length;
-  let width = Math.max(Math.sqrt(count) * 80, 800);
-  let height = width;
+  const count = nodeList.length;
+  const width = Math.max(Math.sqrt(count) * 80, 800);
+  const height = width;
 
-  d3.select("svg").remove();
-  let body = d3.select("body");
-  let svg = body.append("svg")
-      .attr("width", width)
-      .attr("height", height)
+  d3.select('svg').remove();
+  const body = d3.select('body');
+  const svg = body.append('svg')
+    .attr('width', width)
+    .attr('height', height);
 
-  let defs = svg.append("defs")
-      .append("marker")
-		  .attr("id", "arrowhead")
-		  .attr("viewBox", "0 -5 10 10")
-	    .attr("refX", 15)
-      .attr("refY", 0)
-	    .attr("markerWidth", 10)
-	    .attr("markerHeight", 10)
-      .attr("orient", "auto")
-      .attr("markerUnits", "strokeWidth")
-		  .append("path")
-		  .attr("d", "M0,-5L10,0L0,5 Z");
+  const defs = svg.append('defs')
+    .append('marker')
+		  .attr('id', 'arrowhead')
+		  .attr('viewBox', '0 -5 10 10')
+	    .attr('refX', 15)
+    .attr('refY', 0)
+	    .attr('markerWidth', 10)
+	    .attr('markerHeight', 10)
+    .attr('orient', 'auto')
+    .attr('markerUnits', 'strokeWidth')
+		  .append('path')
+		  .attr('d', 'M0,-5L10,0L0,5 Z');
 
-  let link = svg.append("g")
-      .attr("class", "links")
-      .selectAll("line")
-      .data(links);
-  let linkLine = link
-      .enter().append("line")
-      .attr("stroke", "black")
-		  .attr("marker-end", "url(#arrowhead)");
+  const link = svg.append('g')
+    .attr('class', 'links')
+    .selectAll('line')
+    .data(links);
+  const linkLine = link
+    .enter().append('line')
+    .attr('stroke', 'black')
+		  .attr('marker-end', 'url(#arrowhead)');
 
   link.exit().remove();
 
   const radius = 10;
 
-  let node = svg.append("g")
-      .attr("class", "nodes")
-      .selectAll("g")
-      .data(nodeList);
+  const node = svg.append('g')
+    .attr('class', 'nodes')
+    .selectAll('g')
+    .data(nodeList);
 
-  let nodeGroup = node
-      .enter().append("g");
-  nodeGroup.append("circle")
-    .attr("r", 5)
-    .attr("fill", fillColor)
-    .on("click", click)
+  const nodeGroup = node
+    .enter().append('g');
+  nodeGroup.append('circle')
+    .attr('r', 5)
+    .attr('fill', fillColor)
+    .on('click', click)
     .call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
+      .on('start', dragstarted)
+      .on('drag', dragged)
+      .on('end', dragended));
   if (config.showLabels) {
-    nodeGroup.append("text")
-      .text(function(d) { return d.name; })
+    nodeGroup.append('text')
+      .text(function (d) { return d.name; })
       .attr('x', 6)
       .attr('y', 3);
   }
-  nodeGroup.append("title")
-    .text(function(d) { return fullname(d); });
+  nodeGroup.append('title')
+    .text(function (d) { return fullname(d); });
 
   node.exit().remove();
 
-  let simulation = d3.forceSimulation()
-      .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(80).strength(1))
-      .force("charge", d3.forceManyBody().strength(-10))
-      //.force("collision", d3.forceCollide().radius(30))
-      .force("center", d3.forceCenter(width / 2, height / 2));
+  const simulation = d3.forceSimulation()
+    .force('link', d3.forceLink().id(function (d) { return d.id; }).distance(80).strength(1))
+    .force('charge', d3.forceManyBody().strength(-10))
+  // .force("collision", d3.forceCollide().radius(30))
+    .force('center', d3.forceCenter(width / 2, height / 2));
 
   simulation
-      .nodes(nodeList)
-      .on("tick", ticked);
+    .nodes(nodeList)
+    .on('tick', ticked);
 
-  simulation.force("link")
+  simulation.force('link')
     .links(links);
 
-  function fillColor(d) {
+  function fillColor (d) {
     if (d.filtered) {
-      return "#ffee99";
+      return '#ffee99';
     }
 
     if (d.root) {
-      return "#ffaaaa";
+      return '#ffaaaa';
     }
 
     if (d.rc === -1) {
-      return "#aaaaff"; // GC thing.
+      return '#aaaaff'; // GC thing.
     }
 
-    return "#aaffaa"; // CC thing.
+    return '#aaffaa'; // CC thing.
   }
 
   let logKind;
   if (haveCCLog && haveGCLog) {
-    logKind = "CC and GG"
+    logKind = 'CC and GG';
   } else if (haveCCLog) {
-    logKind = "CC";
+    logKind = 'CC';
   } else {
-    logKind = "GC";
+    logKind = 'GC';
   }
   setStatusAndProfile(`Displaying ${nodeList.length} out of ${nodes.length} nodes from ${logKind} logs`);
 
-  function ticked() {
+  function ticked () {
     const radius = 10;
     nodeGroup
-      .attr("transform", function(d) {
-        return "translate(" + d.x + "," + d.y + ")";
+      .attr('transform', function (d) {
+        return 'translate(' + d.x + ',' + d.y + ')';
       });
     linkLine
-      .attr("x1", function(d) { return d.source.x; })
-      .attr("y1", function(d) { return d.source.y; })
-      .attr("x2", function(d) { return d.target.x; })
-      .attr("y2", function(d) { return d.target.y; });
+      .attr('x1', function (d) { return d.source.x; })
+      .attr('y1', function (d) { return d.source.y; })
+      .attr('x2', function (d) { return d.target.x; })
+      .attr('y2', function (d) { return d.target.y; });
   }
 
-  function click(d) {
-    let e = d3.event;
+  function click (d) {
+    const e = d3.event;
     if (e.defaultPrevented) {
       return; // ignore drag
     }
@@ -415,7 +415,7 @@ function display() {
     openInspector();
   }
 
-  function dragstarted(d) {
+  function dragstarted (d) {
     d.fx = d.x;
     d.fy = d.y;
     if (!d3.event.active) {
@@ -423,12 +423,12 @@ function display() {
     }
   }
 
-  function dragged(d) {
+  function dragged (d) {
     d.fx = d3.event.x;
     d.fy = d3.event.y;
   }
 
-  function dragended(d) {
+  function dragended (d) {
     d.fx = null;
     d.fy = null;
     if (!d3.event.active) {
@@ -437,16 +437,16 @@ function display() {
   }
 }
 
-function openInspector() {
-  document.getElementById("inspector").style.visibility = "visible";
+function openInspector () {
+  document.getElementById('inspector').style.visibility = 'visible';
 }
 
-function closeInspector() {
-  document.getElementById("inspector").style.visibility = "hidden";
+function closeInspector () {
+  document.getElementById('inspector').style.visibility = 'hidden';
 }
 
-function populateInspector(node) {
-  let inspector = document.getElementById("inspector");
+function populateInspector (node) {
+  const inspector = document.getElementById('inspector');
   while (inspector.childElementCount > 1) {
     inspector.removeChild(inspector.lastChild);
   }
@@ -455,31 +455,31 @@ function populateInspector(node) {
 
   addInspectorLine(inspector, fullname(node));
 
-  addInspectorButton(inspector, "Hide", () => deselectNode(node));
-  addInspectorButton(inspector, "Show adjacent", () => selectRelatedNodes(node, false));
-  addInspectorButton(inspector, "Focus", () => selectRelatedNodes(node, true));
+  addInspectorButton(inspector, 'Hide', () => deselectNode(node));
+  addInspectorButton(inspector, 'Show adjacent', () => selectRelatedNodes(node, false));
+  addInspectorButton(inspector, 'Focus', () => selectRelatedNodes(node, true));
 
   if (inspectorPrev) {
-    let prev = inspectorPrev;
-    addInspectorButton(inspector, "Find paths from prev", () => selectPathsBetween(node, prev));
+    const prev = inspectorPrev;
+    addInspectorButton(inspector, 'Find paths from prev', () => selectPathsBetween(node, prev));
   }
   inspectorPrev = node;
 
-  addInspectorButton(inspector, "Find roots", () => selectRootsFromNode(node));
+  addInspectorButton(inspector, 'Find roots', () => selectRootsFromNode(node));
 
   if (node.rc === -1) {
-    addInspectorButton(inspector, "Find CC pred", () => selectCCPredecessor(node));
+    addInspectorButton(inspector, 'Find CC pred', () => selectCCPredecessor(node));
   } else {
-    addInspectorButton(inspector, "Find GC pred", () => selectGCPredecessor(node));
+    addInspectorButton(inspector, 'Find GC pred', () => selectGCPredecessor(node));
   }
 
   if (node.outgoingEdges.length) {
-    let count = node.outgoingEdges.length;
+    const count = node.outgoingEdges.length;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      let source = nodes[node.outgoingEdges[i]];
-      let name = node.outgoingEdgeNames[i];
-      let addr = source.address.toString(16);
+      const source = nodes[node.outgoingEdges[i]];
+      const name = node.outgoingEdgeNames[i];
+      const addr = source.address.toString(16);
       addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1, source);
     }
     if (count > maxEdges) {
@@ -488,12 +488,12 @@ function populateInspector(node) {
   }
 
   if (node.incomingEdges.length) {
-    let count = node.incomingEdges.length;
+    const count = node.incomingEdges.length;
     addInspectorLine(inspector, `Incoming edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      let target = nodes[node.incomingEdges[i]];
-      let name = node.incomingEdgeNames[i];
-      let addr = target.address.toString(16);
+      const target = nodes[node.incomingEdges[i]];
+      const name = node.incomingEdgeNames[i];
+      const addr = target.address.toString(16);
       addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
     }
     if (count > maxEdges) {
@@ -502,13 +502,13 @@ function populateInspector(node) {
   }
 }
 
-function addInspectorLine(inspector, text, indent, node) {
+function addInspectorLine (inspector, text, indent, node) {
   if (indent) {
     for (let i = 0; i < indent; i++) {
-      text = "&nbsp;&nbsp;" + text;
+      text = '&nbsp;&nbsp;' + text;
     }
   }
-  let elem = document.createElement("p");
+  const elem = document.createElement('p');
   if (node) {
     elem.onclick = () => selectNode(node);
   }
@@ -517,15 +517,15 @@ function addInspectorLine(inspector, text, indent, node) {
   inspector.appendChild(elem);
 }
 
-function addInspectorButton(inspector, label, handler) {
-  let input = document.createElement("input");
-  input.type = "button";
+function addInspectorButton (inspector, label, handler) {
+  const input = document.createElement('input');
+  input.type = 'button';
   input.value = label;
   input.onclick = handler;
   inspector.appendChild(input);
 }
 
-function selectNode(d) {
+function selectNode (d) {
   if (!d.selected) {
     d.selected = true;
     display();
@@ -533,11 +533,11 @@ function selectNode(d) {
   populateInspector(d);
 }
 
-function deselectNode(d) {
+function deselectNode (d) {
   d.selected = false;
-  let related = getRelatedNodes(d, true, true);
-  for (let id of related) {
-    let node = nodes[id];
+  const related = getRelatedNodes(d, true, true);
+  for (const id of related) {
+    const node = nodes[id];
     if (!hasSelectedRelatives(node)) {
       node.selected = false;
     }
@@ -546,10 +546,10 @@ function deselectNode(d) {
   closeInspector();
 }
 
-function hasSelectedRelatives(d) {
-  let related = getRelatedNodes(d, true, true);
-  for (let id of related) {
-    let node = nodes[id];
+function hasSelectedRelatives (d) {
+  const related = getRelatedNodes(d, true, true);
+  for (const id of related) {
+    const node = nodes[id];
     if (node.selected) {
       return true;
     }
@@ -557,16 +557,16 @@ function hasSelectedRelatives(d) {
   return false;
 }
 
-function selectRelatedNodes(d, hideOthers) {
+function selectRelatedNodes (d, hideOthers) {
   if (hideOthers) {
-    for (let node of nodes) {
+    for (const node of nodes) {
       node.selected = false;
     }
   }
   d.selected = true;
-  let related = getRelatedNodes(d, true, true);
-  for (let id of related) {
-    let node = nodes[id];
+  const related = getRelatedNodes(d, true, true);
+  for (const id of related) {
+    const node = nodes[id];
     if (!node.selected) {
       node.selected = true;
       node.x = d.x;
@@ -576,38 +576,38 @@ function selectRelatedNodes(d, hideOthers) {
   display();
 }
 
-async function selectRootsFromNode(node) {
+async function selectRootsFromNode (node) {
   selectRoots([node], 0);
   display();
 }
 
-async function selectPathsBetween(a, b) {
+async function selectPathsBetween (a, b) {
   console.log(`Selecting paths between ${fullname(a)} and ${fullname(b)}`);
   selectPathBetween(a, b);
   selectPathBetween(b, a);
   display();
 }
 
-async function selectPathBetween(from, to) {
+async function selectPathBetween (from, to) {
   selectPathWithBFS(from, node => node === to, () => undefined, 0);
 }
 
-async function selectGCPredecessor(from) {
+async function selectGCPredecessor (from) {
   selectPathWithBFS(from, node => node.rc === -1, () => undefined, 0);
   display();
 }
 
-async function selectCCPredecessor(from) {
+async function selectCCPredecessor (from) {
   selectPathWithBFS(from, node => node.rc !== -1, () => undefined, 0);
   display();
 }
 
-async function selectNodes() {
-  setStatusAndProfile(`Selecting nodes`);
+async function selectNodes () {
+  setStatusAndProfile('Selecting nodes');
 
   let count = 0;
-  let selected = [];
-  for (let d of nodes) {
+  const selected = [];
+  for (const d of nodes) {
     d.root = d.incomingEdges.length === 0;
     d.filtered = false;
     d.selected = !config.filter || d.name.includes(config.filter);
@@ -646,13 +646,13 @@ async function selectNodes() {
   return count;
 }
 
-async function selectRoots(selected, count) {
-  for (let start of selected) {
+async function selectRoots (selected, count) {
+  for (const start of selected) {
     setStatus(`Searching for roots for ${fullname(start)}`);
     count += selectPathWithBFS(start,
-                               node => node.incomingEdges.length === 0,
-                               node => { node.root = true; },
-                               count);
+      node => node.incomingEdges.length === 0,
+      node => { node.root = true; },
+      count);
     if (count === config.limit) {
       break;
     }
@@ -661,20 +661,20 @@ async function selectRoots(selected, count) {
   return count;
 }
 
-async function selectPathWithBFS(start, predicate, onFound, count) {
+async function selectPathWithBFS (start, predicate, onFound, count) {
   // Perform a BFS from |start| searching for nodes for which
   // |predicate(node)| is true and select nodes along the path found.
 
   let i = 0;
 
-  for (let node of nodes) {
+  for (const node of nodes) {
     node.visited = false;
   }
 
-  let worklist = [{node: start, path: null, length: 0}];
+  const worklist = [{ node: start, path: null, length: 0 }];
 
   while (worklist.length) {
-    let {node, path, length} = worklist.shift();
+    let { node, path, length } = worklist.shift();
 
     if (node.visited) {
       continue;
@@ -707,18 +707,18 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
       // roots but is much faster.
       // todo: add option to find all roots.
       return count;
-    } else  {
+    } else {
       // Queue unvisited incoming nodes.
-      let newPath = {node, next: path};
-      for (let id of node.incomingEdges) {
-        let source = nodes[id];
+      const newPath = { node, next: path };
+      for (const id of node.incomingEdges) {
+        const source = nodes[id];
         if (source === undefined) {
-          throw "Incoming edge ID not found";
+          throw 'Incoming edge ID not found';
         }
         if (source.visited) {
           continue;
         }
-        let item = {node: source, path: newPath, length: length + 1};
+        const item = { node: source, path: newPath, length: length + 1 };
         if (source.selected) {
           // Eager depth first traversal of previously found paths.
           worklist.unshift(item);
@@ -733,21 +733,21 @@ async function selectPathWithBFS(start, predicate, onFound, count) {
   return count;
 }
 
-function selectRelated(selected, count) {
-  let worklist = selected.map(node => ({node, depth: 0}));
+function selectRelated (selected, count) {
+  const worklist = selected.map(node => ({ node, depth: 0 }));
 
   while (worklist.length) {
-    let item = worklist.pop();
-    let depth = item.depth + 1;
+    const item = worklist.pop();
+    const depth = item.depth + 1;
     if (depth > config.maxDepth) {
       continue;
     }
 
-    let related = getRelatedNodes(item.node, config.incoming, config.outgoing);
-    for (let id of related) {
-      let node = nodes[id];
+    const related = getRelatedNodes(item.node, config.incoming, config.outgoing);
+    for (const id of related) {
+      const node = nodes[id];
       if (!node) {
-        throw `Missing node {id}`;
+        throw 'Missing node {id}';
       }
       if (!node.selected) {
         node.selected = true;
@@ -755,7 +755,7 @@ function selectRelated(selected, count) {
         if (count === config.limit) {
           return count;
         }
-        worklist.push({node: node, depth: depth});
+        worklist.push({ node, depth });
       }
     }
   }
@@ -763,9 +763,9 @@ function selectRelated(selected, count) {
   return count;
 }
 
-function getSelectedNodes() {
-  let selected = [];
-  for (let node of nodes) {
+function getSelectedNodes () {
+  const selected = [];
+  for (const node of nodes) {
     if (node.selected) {
       selected.push(node);
     }
@@ -773,7 +773,7 @@ function getSelectedNodes() {
   return selected;
 }
 
-function getRelatedNodes(node, incoming, outgoing) {
+function getRelatedNodes (node, incoming, outgoing) {
   let related = [];
   if (incoming) {
     related = related.concat(node.incomingEdges);
@@ -784,21 +784,21 @@ function getRelatedNodes(node, incoming, outgoing) {
   return related;
 }
 
-function getLinks(objects, selected) {
-  let links = [];
-  for (let object of selected) {
-    let source = object.id;
+function getLinks (objects, selected) {
+  const links = [];
+  for (const object of selected) {
+    const source = object.id;
     for (let i = 0; i < object.outgoingEdges.length; i++) {
       if (!config.allEdges) {
         // Skip edges from JS objects to global and prototype.
-        let kind = object.outgoingEdgeNames[i];
-        if (kind === "baseshape_global" || kind === "baseshape_proto") {
+        const kind = object.outgoingEdgeNames[i];
+        if (kind === 'baseshape_global' || kind === 'baseshape_proto') {
           continue;
         }
       }
-      let target = object.outgoingEdges[i];
+      const target = object.outgoingEdges[i];
       if (objects[target].selected && source !== target) {
-        links.push({source, target});
+        links.push({ source, target });
       }
     }
   }

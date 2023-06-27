@@ -119,6 +119,7 @@ function decompress(name, compressedData) {
 function loaded(name, text) {
   loadCount++;
   parseLog(name, text, loadCount == 2).then(update).catch(e => {
+    clearData();
     setErrorStatus(`Error parsing ${name}: ${e}`);
     throw e;
   });
@@ -169,7 +170,6 @@ export async function poll(message) {
 
 function clearData() {
   console.log("Clearing all data");
-  parser.clear();
   nodes = undefined;
   haveCCLog = false;
   haveGCLog = false;
@@ -185,7 +185,7 @@ async function parseLog(filename, text, isFirstUserLoad) {
     }
     state = "parsing";
     setStatusAndProfile(`Parsing CC log file`);
-    nodes = await parser.parseCCLog(text);
+    nodes = await parser.parseCCLog(text, nodes);
     state = "idle";
     haveCCLog = true;
     ccLogFilename = filename;
@@ -200,7 +200,7 @@ async function parseLog(filename, text, isFirstUserLoad) {
     }
     state = "parsing";
     setStatusAndProfile(`Parsing GC log file`);
-    nodes = await parser.parseGCLog(text);
+    nodes = await parser.parseGCLog(text, nodes);
     state = "idle";
     haveGCLog = true;
     gcLogFilename = filename;

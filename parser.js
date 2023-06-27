@@ -4,26 +4,20 @@
 
 import { poll } from "./main.js";
 
-let nodes;
-let strings;
-let addressToIdMap;
-
-function maybeInit() {
-  if (!nodes) {
-    nodes = [];
-    strings = new Map();
-    addressToIdMap = new Map();
+function ensureNodes(maybeExistingNodes) {
+  if (maybeExistingNodes) {
+    return maybeExistingNodes;
   }
+  
+  let nodes = [];
+  nodes.stringMap = new Map();
+  nodes.addressToIdMap = new Map();
+
+  return nodes;
 }
 
-export function clear() {
-  nodes = undefined;
-  strings = undefined;
-  addressToIdMap = undefined;
-}
-
-export async function parseCCLog(text) {
-  maybeInit();
+export async function parseCCLog(text, maybeGCNodes) {
+  let nodes = ensureNodes(maybeGCNodes);
 
   let node;
   let done = false;
@@ -84,7 +78,7 @@ export async function parseCCLog(text) {
       }
       if (!node.hasGCData) {
         let addr = parseAddr(words[1]);
-        let kind = internString(words.slice(2).join(" "));
+        let kind = internString(nodes, words.slice(2).join(" "));
         node.outgoingEdges.push(addr);
         node.outgoingEdgeNames.push(kind);
       }
@@ -121,8 +115,8 @@ export async function parseCCLog(text) {
         }
         kind = words[2];
       }
-      kind = internString(kind);
-      node = createOrMergeNode('CC', addr, rc, color, kind, line);
+      kind = internString(nodes, kind);
+      node = createOrMergeNode(nodes, 'CC', addr, rc, color, kind, line);
       if (!node.hasGCData) {
         nodesAdded.push(node);
       }
@@ -136,8 +130,9 @@ export async function parseCCLog(text) {
     }
   }
 
-  processNewEdges(nodesAdded);
+  processNewEdges(nodes, nodesAdded);
 
+  let addressToIdMap = nodes.addressToIdMap;
   for (let [line, map, ...fields] of weakMapEntries) {
     let hasMap = map !== 0;
     if (hasMap) {
@@ -163,7 +158,7 @@ export async function parseCCLog(text) {
     }
 
     // Create a fake node for each entry.
-    let entry = createNode('CC', 0, -1, "", "WeakMapEntry");
+    let entry = createNode(nodes, 'CC', 0, -1, "", "WeakMapEntry");
     if (hasMap) {
       createEdge(map, entry, "WeakMap entry");
     }
@@ -177,8 +172,8 @@ export async function parseCCLog(text) {
   return nodes;
 }
 
-export async function parseGCLog(text) {
-  maybeInit();
+export async function parseGCLog(text, maybeCCNodes) {
+  let nodes = ensureNodes(maybeCCNodes);
 
   let node;
   let weakMapEntries = [];
@@ -223,7 +218,7 @@ export async function parseGCLog(text) {
           }
           if (!node.hasCCData) {
             let addr = parseAddr(words[1]);
-            let kind = internString(words.slice(3).join(" "));
+            let kind = internString(nodes, words.slice(3).join(" "));
             node.outgoingEdges.push(addr);
             node.outgoingEdgeNames.push(kind);
           }
@@ -231,9 +226,9 @@ export async function parseGCLog(text) {
         } else {
           let addr = parseAddr(words[0]);
           let color = parseGCLogColor(words[1]);
-          let kind = internString(words[2]);
+          let kind = internString(nodes, words[2]);
           let someKindOfName = words[3]; // todo where to put this?
-          node = createOrMergeNode('GC', addr, -1, color, kind, line);
+          node = createOrMergeNode(nodes, 'GC', addr, -1, color, kind, line);
           if (!node.hasCCData) {
             nodesAdded.push(node);
           }
@@ -244,8 +239,9 @@ export async function parseGCLog(text) {
     }
   }
 
-  processNewEdges(nodesAdded);
+  processNewEdges(nodes, nodesAdded);
 
+  let addressToIdMap = nodes.addressToIdMap;
   let blackRoots;
   let grayRoots;
   for (let words of roots) {
@@ -265,7 +261,7 @@ export async function parseGCLog(text) {
     // Hack: use special hardcoded addresses for dummy root set nodes.
     let setAddr = color === "black" ? 1 : 2;
     let setName = color === "black" ? "Black roots" : "Gray roots";
-    let rootSet = getOrCreateNode('GC', setAddr, -1, color, setName);
+    let rootSet = getOrCreateNode(nodes, 'GC', setAddr, -1, color, setName);
     createEdge(rootSet, node, name);
 
     // todo: if we have CC data, don't include gray roots we have information
@@ -316,27 +312,28 @@ function parseCCLogColor(string) {
   throw "Unrecognised CC log color: " + string;
 }
 
-function internString(s) {
-  let result = strings.get(s);
+function internString(nodes, s) {
+  let result = nodes.stringMap.get(s);
   if (result !== undefined) {
     return result;
   }
 
-  strings.set(s, s);
+  nodes.stringMap.set(s, s);
   return s;
 }
 
-function createOrMergeNode(logKind, addr, rc, color, kind, line) {
+function createOrMergeNode(nodes, logKind, addr, rc, color, kind, line) {
   if (logKind !== 'GC' && logKind !== 'CC') {
     throw "Bad log kind";
   }
 
   if (addr === 0) {
-    return createNode(logKind, addr, rc, color, kind);
+    return createNode(nodes, logKind, addr, rc, color, kind);
   }
 
+  let addressToIdMap = nodes.addressToIdMap;
   if (!addressToIdMap.has(addr)) {
-    let node = createNode(logKind, addr, rc, color, kind);
+    let node = createNode(nodes, logKind, addr, rc, color, kind);
     addressToIdMap.set(addr, node.id);
     return node;
   }
@@ -369,13 +366,14 @@ function createOrMergeNode(logKind, addr, rc, color, kind, line) {
   return node;
 }
 
-function getOrCreateNode(logKind, addr, rc, color, kind) {
+function getOrCreateNode(nodes, logKind, addr, rc, color, kind) {
   if (logKind !== 'GC' && logKind !== 'CC') {
     throw "Bad log kind";
   }
 
+  let addressToIdMap = nodes.addressToIdMap;
   if (!addressToIdMap.has(addr)) {
-    let node = createNode(logKind, addr, rc, color, kind);
+    let node = createNode(nodes, logKind, addr, rc, color, kind);
     addressToIdMap.set(addr, node.id);
     return node;
   }
@@ -389,7 +387,7 @@ function getOrCreateNode(logKind, addr, rc, color, kind) {
   return node;
 }
 
-function createNode(logKind, addr, rc, color, kind) {
+function createNode(nodes, logKind, addr, rc, color, kind) {
   let node = {id: nodes.length,
               address: addr,
               rc,
@@ -423,7 +421,7 @@ function createEdge(source, target, name) {
   target.incomingEdgeNames.push(name);
 }
 
-function processNewEdges(newNodes) {
+function processNewEdges(nodes, newNodes) {
   for (let node of newNodes) {
     let edges = node.outgoingEdges;
 
@@ -437,7 +435,7 @@ function processNewEdges(newNodes) {
       // Replace address with id.
       let addr = edges[i];
       let name = names[i];
-      let id = addressToIdMap.get(addr);
+      let id = nodes.addressToIdMap.get(addr);
 
       /*
       if (id === undefined) {

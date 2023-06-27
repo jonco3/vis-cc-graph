@@ -175,12 +175,8 @@ export async function parseGCLog (text, maybeCCNodes) {
   const nodes = ensureNodes(maybeCCNodes);
 
   let node;
-  const weakMapEntries = [];
-
   let section;
-
   let count = 0;
-
   const roots = [];
   const nodesAdded = [];
 
@@ -226,7 +222,7 @@ export async function parseGCLog (text, maybeCCNodes) {
           const addr = parseAddr(words[0]);
           const color = parseGCLogColor(words[1]);
           const kind = internString(nodes, words[2]);
-          const someKindOfName = words[3]; // todo where to put this?
+          // todo: some kind of name in words[3]
           node = createOrMergeNode(nodes, 'GC', addr, -1, color, kind, line);
           if (!node.hasCCData) {
             nodesAdded.push(node);

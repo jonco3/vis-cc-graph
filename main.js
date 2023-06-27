@@ -118,7 +118,7 @@ function decompress (name, compressedData) {
 
 function loaded (name, text) {
   loadCount++;
-  parseLog(name, text, loadCount == 2).then(update).catch(e => {
+  parseLog(name, text, loadCount === 2).then(update).catch(e => {
     clearData();
     setStatus(`Error parsing ${name}: ${e}`);
     throw e;
@@ -274,18 +274,18 @@ function display () {
     .attr('width', width)
     .attr('height', height);
 
-  const defs = svg.append('defs')
+  svg.append('defs')
     .append('marker')
-		  .attr('id', 'arrowhead')
-		  .attr('viewBox', '0 -5 10 10')
-	    .attr('refX', 15)
+    .attr('id', 'arrowhead')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 15)
     .attr('refY', 0)
-	    .attr('markerWidth', 10)
-	    .attr('markerHeight', 10)
+    .attr('markerWidth', 10)
+    .attr('markerHeight', 10)
     .attr('orient', 'auto')
     .attr('markerUnits', 'strokeWidth')
-		  .append('path')
-		  .attr('d', 'M0,-5L10,0L0,5 Z');
+    .append('path')
+    .attr('d', 'M0,-5L10,0L0,5 Z');
 
   const link = svg.append('g')
     .attr('class', 'links')
@@ -294,11 +294,9 @@ function display () {
   const linkLine = link
     .enter().append('line')
     .attr('stroke', 'black')
-		  .attr('marker-end', 'url(#arrowhead)');
+    .attr('marker-end', 'url(#arrowhead)');
 
   link.exit().remove();
-
-  const radius = 10;
 
   const node = svg.append('g')
     .attr('class', 'nodes')
@@ -366,7 +364,6 @@ function display () {
   setStatus(`Displaying ${nodeList.length} out of ${nodes.length} nodes from ${logKind} logs`);
 
   function ticked () {
-    const radius = 10;
     nodeGroup
       .attr('transform', function (d) {
         return 'translate(' + d.x + ',' + d.y + ')';

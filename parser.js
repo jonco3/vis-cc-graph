@@ -237,8 +237,6 @@ export async function parseGCLog (text, maybeCCNodes) {
   processNewEdges(nodes, nodesAdded);
 
   const addressToIdMap = nodes.addressToIdMap;
-  let blackRoots;
-  let grayRoots;
   for (const words of roots) {
     const addr = parseAddr(words[0]);
     const color = parseGCLogColor(words[1]);

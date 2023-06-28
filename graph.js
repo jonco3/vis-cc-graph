@@ -8,6 +8,7 @@ export class Graph {
   constructor () {
     this.nodes = [];
     this.internMap = new Map();
+    this.internedValues = [];
     this.addressToIdMap = new Map(); // todo: move to parser
   }
 
@@ -38,11 +39,11 @@ export class Graph {
   }
 
   addEdge (sourceNode, targetNode, name) {
-    name = this.intern(name);
+    const nameId = this.internToId(name);
     sourceNode.outgoingEdges.push(targetNode.id);
-    sourceNode.outgoingEdgeNames.push(name);
+    sourceNode.outgoingEdgeNames.push(nameId);
     targetNode.incomingEdges.push(sourceNode.id);
-    targetNode.incomingEdgeNames.push(name);
+    targetNode.incomingEdgeNames.push(nameId);
   }
 
   hasOutgoingEdges (node) {
@@ -52,7 +53,7 @@ export class Graph {
   forEachOutgoingEdge (node, f) {
     for (let i = 0; i < node.outgoingEdges.length; i++) {
       f(this.getNode(node.outgoingEdges[i]),
-        node.outgoingEdgeNames[i]);
+        this.getInternedValue(node.outgoingEdgeNames[i]));
     }
   }
 
@@ -63,22 +64,32 @@ export class Graph {
   forEachIncomingEdge (node, f) {
     for (let i = 0; i < node.incomingEdges.length; i++) {
       f(this.getNode(node.incomingEdges[i]),
-        node.incomingEdgeNames[i]);
+        this.getInternedValue(node.incomingEdgeNames[i]));
     }
   }
 
   // Utility method to canonicalise a value.
   intern (value) {
-    const result = this.internMap.get(value);
-    if (result !== undefined) {
-      return result;
-    }
-
-    this.internMap.set(value, value);
-    return value;
+    return this.internedValues[this.internToId(value)];
   }
 
   // Internal methods.
+
+  internToId (value) {
+    let id = this.internMap.get(value);
+    if (id !== undefined) {
+      return id;
+    }
+
+    id = this.internedValues.length;
+    this.internedValues.push(value);
+    this.internMap.set(value, id);
+    return id;
+  }
+
+  getInternedValue (id) {
+    return this.internedValues[id];
+  }
 
   checkNodeId (id) {
     assert(Number.isInteger(id) && id < this.nodes.length);

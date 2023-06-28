@@ -76,7 +76,7 @@ export async function parseCCLog (text, maybeGCGraph) {
           const addr = parseAddr(words[1]);
           const name = graph.intern(words.slice(2).join(' '));
           const target = getOrCreateNode(graph, addr);
-          graph.addEdge(node, target);
+          graph.addEdge(node, target, name);
         }
         break;
       }
@@ -207,7 +207,7 @@ export async function parseGCLog (text, maybeCCGraph) {
             const addr = parseAddr(words[1]);
             const name = graph.intern(words.slice(3).join(' '));
             const target = getOrCreateNode(graph, addr);
-            graph.addEdge(node, target);
+            graph.addEdge(node, target, name);
           }
           // todo: check match when already have edges from CC log
         } else {

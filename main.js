@@ -447,7 +447,7 @@ function populateInspector (node) {
     const count = node.outgoingEdges.length;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      const source = graph[node.outgoingEdges[i]];
+      const source = graph.getNode(node.outgoingEdges[i]);
       const name = node.outgoingEdgeNames[i];
       const addr = source.address.toString(16);
       addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1, source);
@@ -461,7 +461,7 @@ function populateInspector (node) {
     const count = node.incomingEdges.length;
     addInspectorLine(inspector, `Incoming edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      const target = graph[node.incomingEdges[i]];
+      const target = graph.getNode(node.incomingEdges[i]);
       const name = node.incomingEdgeNames[i];
       const addr = target.address.toString(16);
       addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
@@ -507,7 +507,7 @@ function deselectNode (d) {
   d.selected = false;
   const related = getRelatedNodes(d, true, true);
   for (const id of related) {
-    const node = graph[id];
+    const node = graph.getNode(id);
     if (!hasSelectedRelatives(node)) {
       node.selected = false;
     }
@@ -519,7 +519,7 @@ function deselectNode (d) {
 function hasSelectedRelatives (d) {
   const related = getRelatedNodes(d, true, true);
   for (const id of related) {
-    const node = graph[id];
+    const node = graph.getNode(id);
     if (node.selected) {
       return true;
     }
@@ -529,14 +529,14 @@ function hasSelectedRelatives (d) {
 
 function selectRelatedNodes (d, hideOthers) {
   if (hideOthers) {
-    for (const node of nodes) {
+    for (const node of graph.nodes) {
       node.selected = false;
     }
   }
   d.selected = true;
   const related = getRelatedNodes(d, true, true);
   for (const id of related) {
-    const node = graph[id];
+    const node = graph.getNode(id);
     if (!node.selected) {
       node.selected = true;
       node.x = d.x;
@@ -577,7 +577,7 @@ async function selectNodes () {
 
   let count = 0;
   const selected = [];
-  for (const d of graph) {
+  for (const d of graph.nodes) {
     d.root = d.incomingEdges.length === 0;
     d.filtered = false;
     d.selected = !config.filter || d.name.includes(config.filter);
@@ -637,7 +637,7 @@ async function selectPathWithBFS (start, predicate, onFound, count) {
 
   let i = 0;
 
-  for (const node of graph) {
+  for (const node of graph.nodes) {
     node.visited = false;
   }
 
@@ -681,7 +681,7 @@ async function selectPathWithBFS (start, predicate, onFound, count) {
       // Queue unvisited incoming nodes.
       const newPath = { node, next: path };
       for (const id of node.incomingEdges) {
-        const source = graph[id];
+        const source = graph.getNode(id);
         if (source === undefined) {
           throw 'Incoming edge ID not found';
         }
@@ -715,7 +715,7 @@ function selectRelated (selected, count) {
 
     const related = getRelatedNodes(item.node, config.incoming, config.outgoing);
     for (const id of related) {
-      const node = graph[id];
+      const node = graph.getNode(id);
       if (!node) {
         throw 'Missing node {id}';
       }
@@ -735,7 +735,7 @@ function selectRelated (selected, count) {
 
 function getSelectedNodes () {
   const selected = [];
-  for (const node of graph) {
+  for (const node of graph.nodes) {
     if (node.selected) {
       selected.push(node);
     }
@@ -754,7 +754,7 @@ function getRelatedNodes (node, incoming, outgoing) {
   return related;
 }
 
-function getLinks (objects, selected) {
+function getLinks (graph, selected) {
   const links = [];
   for (const object of selected) {
     const source = object.id;
@@ -767,7 +767,7 @@ function getLinks (objects, selected) {
         }
       }
       const target = object.outgoingEdges[i];
-      if (objects[target].selected && source !== target) {
+      if (graph.getNode(target).selected && source !== target) {
         links.push({ source, target });
       }
     }

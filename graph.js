@@ -45,6 +45,28 @@ export class Graph {
     targetNode.incomingEdgeNames.push(name);
   }
 
+  hasOutgoingEdges (node) {
+    return node.outgoingEdges.length !== 0;
+  }
+
+  forEachOutgoingEdge (node, f) {
+    for (let i = 0; i < node.outgoingEdges.length; i++) {
+      f(this.getNode(node.outgoingEdges[i]),
+        node.outgoingEdgeNames[i]);
+    }
+  }
+
+  hasIncomingEdges (node) {
+    return node.incomingEdges.length !== 0;
+  }
+
+  forEachIncomingEdge (node, f) {
+    for (let i = 0; i < node.incomingEdges.length; i++) {
+      f(this.getNode(node.incomingEdges[i]),
+        node.incomingEdgeNames[i]);
+    }
+  }
+
   // Utility method to canonicalise a value.
   intern (value) {
     const result = this.internMap.get(value);

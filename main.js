@@ -204,7 +204,7 @@ async function update () {
 
   closeInspector();
   config = readConfig();
-  const selectedCount = await selectNodes();
+  await selectNodes();
   state = 'idle';
 
   display();
@@ -443,29 +443,31 @@ function populateInspector (node) {
     addInspectorButton(inspector, 'Find GC pred', () => selectGCPredecessor(node));
   }
 
-  if (node.outgoingEdges.length) {
-    const count = node.outgoingEdges.length;
+  if (graph.hasOutgoingEdges(node)) {
+    let count = 0;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
-    for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      const source = graph.getNode(node.outgoingEdges[i]);
-      const name = node.outgoingEdgeNames[i];
-      const addr = source.address.toString(16);
-      addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1, source);
-    }
+    graph.forEachOutgoingEdge(node, (target, name) => {
+      count++;
+      if (count <= maxEdges) {
+        const addr = target.address.toString(16);
+        addInspectorLine(inspector, `${name}: 0x${addr} ${target.name}`, 1, target);
+      }
+    });
     if (count > maxEdges) {
       addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
   }
 
-  if (node.incomingEdges.length) {
-    const count = node.incomingEdges.length;
+  if (graph.hasIncomingEdges(node)) {
+    const count = 0;
     addInspectorLine(inspector, `Incoming edges (${count}):`);
-    for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      const target = graph.getNode(node.incomingEdges[i]);
-      const name = node.incomingEdgeNames[i];
-      const addr = target.address.toString(16);
-      addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
-    }
+    graph.forEachIncomingEdge(node, (source, name) => {
+      count++;
+      if (count <= maxEdges) {
+        const addr = source.address.toString(16);
+        addInspectorLine(inspector, `0x${addr} ${source.name} ${name}`, 1, source);
+      }
+    });
     if (count > maxEdges) {
       addInspectorLine(inspector, `...skipped ${count - maxEdges} more...`, 1);
     }
@@ -620,7 +622,7 @@ async function selectRoots (selected, count) {
   for (const start of selected) {
     setStatus(`Searching for roots for ${fullname(start)}`);
     count += selectPathWithBFS(start,
-      node => node.incomingEdges.length === 0,
+      node => !graph.hasIncomingEdges(node),
       node => { node.root = true; },
       count);
     if (count === config.limit) {
@@ -680,22 +682,17 @@ async function selectPathWithBFS (start, predicate, onFound, count) {
     } else {
       // Queue unvisited incoming nodes.
       const newPath = { node, next: path };
-      for (const id of node.incomingEdges) {
-        const source = graph.getNode(id);
-        if (source === undefined) {
-          throw new Error('Incoming edge ID not found');
+      graph.forEachIncomingEdge(node, source => {
+        if (!source.visited) {
+          const item = { node: source, path: newPath, length: length + 1 };
+          if (source.selected) {
+            // Eager depth first traversal of previously found paths.
+            worklist.unshift(item);
+          } else {
+            worklist.push(item);
+          }
         }
-        if (source.visited) {
-          continue;
-        }
-        const item = { node: source, path: newPath, length: length + 1 };
-        if (source.selected) {
-          // Eager depth first traversal of previously found paths.
-          worklist.unshift(item);
-        } else {
-          worklist.push(item);
-        }
-      }
+      });
     }
   }
 
@@ -714,11 +711,7 @@ function selectRelated (selected, count) {
     }
 
     const related = getRelatedNodes(item.node, config.incoming, config.outgoing);
-    for (const id of related) {
-      const node = graph.getNode(id);
-      if (!node) {
-        throw new Error('Missing node {id}');
-      }
+    for (const node of related) {
       if (!node.selected) {
         node.selected = true;
         count++;
@@ -744,33 +737,31 @@ function getSelectedNodes () {
 }
 
 function getRelatedNodes (node, incoming, outgoing) {
-  let related = [];
+  const related = [];
   if (incoming) {
-    related = related.concat(node.incomingEdges);
+    graph.forEachIncomingEdge(node, source => { related.push(source); });
   }
   if (outgoing) {
-    related = related.concat(node.outgoingEdges);
+    graph.forEachOutgoingEdge(node, target => { related.push(target); });
   }
   return related;
 }
 
 function getLinks (graph, selected) {
   const links = [];
-  for (const object of selected) {
-    const source = object.id;
-    for (let i = 0; i < object.outgoingEdges.length; i++) {
+  for (const source of selected) {
+    graph.forEachOutgoingEdge(source, (target, name) => {
       if (!config.allEdges) {
         // Skip edges from JS objects to global and prototype.
-        const kind = object.outgoingEdgeNames[i];
-        if (kind === 'baseshape_global' || kind === 'baseshape_proto') {
-          continue;
+        if (name === 'baseshape_global' || name === 'baseshape_proto') {
+          return;  // Continue loop.
         }
       }
-      const target = object.outgoingEdges[i];
-      if (graph.getNode(target).selected && source !== target) {
-        links.push({ source, target });
+      if (target.selected && !Object.is(source, target)) {
+        links.push({ source: source.id,
+                     target: target.id });
       }
-    }
+    });
   }
   return links;
 }

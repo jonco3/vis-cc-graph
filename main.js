@@ -459,7 +459,7 @@ function populateInspector (node) {
   }
 
   if (graph.hasIncomingEdges(node)) {
-    const count = 0;
+    let count = 0;
     addInspectorLine(inspector, `Incoming edges (${count}):`);
     graph.forEachIncomingEdge(node, (source, name) => {
       count++;

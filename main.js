@@ -6,7 +6,7 @@ import * as parser from './parser.js';
 
 const initialLogFile = 'demo-graph.log.gz';
 
-let nodes;
+let graph;
 let haveCCLog;
 let haveGCLog;
 let ccLogFilename = '';
@@ -144,7 +144,7 @@ export async function poll (message) {
 
 function clearData () {
   console.log('Clearing all data');
-  nodes = undefined;
+  graph = undefined;
   haveCCLog = false;
   haveGCLog = false;
   gcLogFilename = '';
@@ -159,7 +159,7 @@ async function parseLog (filename, text, isFirstUserLoad) {
     }
     state = 'parsing';
     setStatus('Parsing CC log file');
-    nodes = await parser.parseCCLog(text, nodes);
+    graph = await parser.parseCCLog(text, graph);
     state = 'idle';
     haveCCLog = true;
     ccLogFilename = filename;
@@ -174,7 +174,7 @@ async function parseLog (filename, text, isFirstUserLoad) {
     }
     state = 'parsing';
     setStatus('Parsing GC log file');
-    nodes = await parser.parseGCLog(text, nodes);
+    graph = await parser.parseGCLog(text, graph);
     state = 'idle';
     haveGCLog = true;
     gcLogFilename = filename;
@@ -262,7 +262,7 @@ function display () {
   setStatus('Building display');
 
   const nodeList = getSelectedNodes();
-  const links = getLinks(nodes, nodeList);
+  const links = getLinks(graph, nodeList);
 
   const count = nodeList.length;
   const width = Math.max(Math.sqrt(count) * 80, 800);
@@ -361,7 +361,7 @@ function display () {
   } else {
     logKind = 'GC';
   }
-  setStatus(`Displaying ${nodeList.length} out of ${nodes.length} nodes from ${logKind} logs`);
+  setStatus(`Displaying ${nodeList.length} out of ${graph.length} nodes from ${logKind} logs`);
 
   function ticked () {
     nodeGroup
@@ -447,7 +447,7 @@ function populateInspector (node) {
     const count = node.outgoingEdges.length;
     addInspectorLine(inspector, `Outgoing edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      const source = nodes[node.outgoingEdges[i]];
+      const source = graph[node.outgoingEdges[i]];
       const name = node.outgoingEdgeNames[i];
       const addr = source.address.toString(16);
       addInspectorLine(inspector, `${name}: 0x${addr} ${source.name}`, 1, source);
@@ -461,7 +461,7 @@ function populateInspector (node) {
     const count = node.incomingEdges.length;
     addInspectorLine(inspector, `Incoming edges (${count}):`);
     for (let i = 0; i < Math.min(count, maxEdges); i++) {
-      const target = nodes[node.incomingEdges[i]];
+      const target = graph[node.incomingEdges[i]];
       const name = node.incomingEdgeNames[i];
       const addr = target.address.toString(16);
       addInspectorLine(inspector, `0x${addr} ${target.name} ${name}`, 1, target);
@@ -507,7 +507,7 @@ function deselectNode (d) {
   d.selected = false;
   const related = getRelatedNodes(d, true, true);
   for (const id of related) {
-    const node = nodes[id];
+    const node = graph[id];
     if (!hasSelectedRelatives(node)) {
       node.selected = false;
     }
@@ -519,7 +519,7 @@ function deselectNode (d) {
 function hasSelectedRelatives (d) {
   const related = getRelatedNodes(d, true, true);
   for (const id of related) {
-    const node = nodes[id];
+    const node = graph[id];
     if (node.selected) {
       return true;
     }
@@ -536,7 +536,7 @@ function selectRelatedNodes (d, hideOthers) {
   d.selected = true;
   const related = getRelatedNodes(d, true, true);
   for (const id of related) {
-    const node = nodes[id];
+    const node = graph[id];
     if (!node.selected) {
       node.selected = true;
       node.x = d.x;
@@ -577,7 +577,7 @@ async function selectNodes () {
 
   let count = 0;
   const selected = [];
-  for (const d of nodes) {
+  for (const d of graph) {
     d.root = d.incomingEdges.length === 0;
     d.filtered = false;
     d.selected = !config.filter || d.name.includes(config.filter);
@@ -637,7 +637,7 @@ async function selectPathWithBFS (start, predicate, onFound, count) {
 
   let i = 0;
 
-  for (const node of nodes) {
+  for (const node of graph) {
     node.visited = false;
   }
 
@@ -681,7 +681,7 @@ async function selectPathWithBFS (start, predicate, onFound, count) {
       // Queue unvisited incoming nodes.
       const newPath = { node, next: path };
       for (const id of node.incomingEdges) {
-        const source = nodes[id];
+        const source = graph[id];
         if (source === undefined) {
           throw 'Incoming edge ID not found';
         }
@@ -715,7 +715,7 @@ function selectRelated (selected, count) {
 
     const related = getRelatedNodes(item.node, config.incoming, config.outgoing);
     for (const id of related) {
-      const node = nodes[id];
+      const node = graph[id];
       if (!node) {
         throw 'Missing node {id}';
       }
@@ -735,7 +735,7 @@ function selectRelated (selected, count) {
 
 function getSelectedNodes () {
   const selected = [];
-  for (const node of nodes) {
+  for (const node of graph) {
     if (node.selected) {
       selected.push(node);
     }

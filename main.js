@@ -182,7 +182,7 @@ async function parseLog (filename, text, isFirstUserLoad) {
     return;
   }
 
-  throw 'Unrecognised log file';
+  throw new Error('Unrecognised log file');
 }
 
 function updateFilenameDisplay () {
@@ -198,7 +198,7 @@ function updateFilenameDisplay () {
 
 async function update () {
   if (state !== 'idle') {
-    throw 'Bad state: ' + state;
+    throw new Error('Bad state: ' + state);
   }
   state = 'updating';
 
@@ -256,7 +256,7 @@ function fullname (node) {
 
 function display () {
   if (state !== 'idle') {
-    throw 'Bad state: ' + state;
+    throw new Error('Bad state: ' + state);
   }
 
   setStatus('Building display');
@@ -683,7 +683,7 @@ async function selectPathWithBFS (start, predicate, onFound, count) {
       for (const id of node.incomingEdges) {
         const source = graph.getNode(id);
         if (source === undefined) {
-          throw 'Incoming edge ID not found';
+          throw new Error('Incoming edge ID not found');
         }
         if (source.visited) {
           continue;
@@ -717,7 +717,7 @@ function selectRelated (selected, count) {
     for (const id of related) {
       const node = graph.getNode(id);
       if (!node) {
-        throw 'Missing node {id}';
+        throw new Error('Missing node {id}');
       }
       if (!node.selected) {
         node.selected = true;

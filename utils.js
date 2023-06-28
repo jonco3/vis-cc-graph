@@ -3,6 +3,6 @@ export function assert (condition, message) {
     if (!message) {
       message = 'Assertion failure';
     }
-    throw message;
+    throw new Error(message);
   }
 }

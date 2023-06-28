@@ -49,7 +49,7 @@ export async function parseCCLog (text, maybeGCGraph) {
         const fields = words.map(w => {
           const field = w.split('=')[1];
           if (field === undefined) {
-            throw "Can't find weak map address: " + line;
+            throw new Error("Can't find weak map address: " + line);
           }
           if (field === '(nil)') {
             return 0;
@@ -58,7 +58,7 @@ export async function parseCCLog (text, maybeGCGraph) {
           return addr;
         });
         if (fields.length !== 4) {
-          throw "Can't parse weak map entry: " + line;
+          throw new Error("Can't parse weak map entry: " + line);
         }
         fields.unshift(line);
         weakMapEntries.push(fields);
@@ -71,7 +71,7 @@ export async function parseCCLog (text, maybeGCGraph) {
 
       case '>': {
         if (!node) {
-          throw 'Unexpected >';
+          throw new Error('Unexpected >');
         }
         if (!node.hasGCData) {
           const addr = parseAddr(words[1]);
@@ -103,12 +103,12 @@ export async function parseCCLog (text, maybeGCGraph) {
         } else {
           const match = words[1].match(/^\[rc=(\d+)\]$/);
           if (!match) {
-            throw "Can't parse refcount word: " + line;
+            throw new Error("Can't parse refcount word: " + line);
           }
           rc = parseInt(match[1]);
           color = '';
           if (Number.isNaN(rc)) {
-            throw "Can't parse refcount number: " + match[1];
+            throw new Error("Can't parse refcount number: " + match[1]);
           }
           kind = words[2];
         }
@@ -134,7 +134,7 @@ export async function parseCCLog (text, maybeGCGraph) {
     if (hasMap) {
       const id = addressToIdMap.get(map);
       if (id === undefined) {
-        throw 'WeakMapEntry map not found: ' + line;
+        throw new Error('WeakMapEntry map not found: ' + line);
       }
       map = graph.getNode(id);
     }
@@ -142,7 +142,7 @@ export async function parseCCLog (text, maybeGCGraph) {
       const id = addressToIdMap.get(addr);
       if (id === undefined) {
         // todo: this happens sometimes
-        // throw "WeakMapEntry field not found: " + line;
+        // throw new Error("WeakMapEntry field not found: " + line);
         console.log('WeakMapEntry field not found: ' + line);
         return undefined;
       }
@@ -206,7 +206,7 @@ export async function parseGCLog (text, maybeCCGraph) {
       } else if (section === 'main') {
         if (words[0] === '>') {
           if (!node) {
-            throw 'Unexpected >';
+            throw new Error('Unexpected >');
           }
           if (!node.hasCCData) {
             const addr = parseAddr(words[1]);
@@ -226,7 +226,7 @@ export async function parseGCLog (text, maybeCCGraph) {
           }
         }
       } else {
-        throw 'Bad section: ' + section;
+        throw new Error('Bad section: ' + section);
       }
     }
   }
@@ -241,7 +241,7 @@ export async function parseGCLog (text, maybeCCGraph) {
 
     if (!addressToIdMap.has(addr)) {
       // todo: same bug as processNewEdges
-      // throw `Unknown root address: ${words.join(" ")}`;
+      // throw new Error(`Unknown root address: ${words.join(" ")}`);
       continue;
     }
     const id = addressToIdMap.get(addr);
@@ -269,11 +269,11 @@ function matchLines (text) {
 
 function parseAddr (string) {
   if (!string.startsWith('0x')) {
-    throw 'Expected address: ' + string;
+    throw new Error('Expected address: ' + string);
   }
   const addr = parseInt(string.substr(2), 16);
   if (Number.isNaN(addr)) {
-    throw "Can't parse address: " + string;
+    throw new Error("Can't parse address: " + string);
   }
   return addr;
 }
@@ -287,7 +287,7 @@ function parseGCLogColor (string) {
     return 'gray';
   }
 
-  throw 'Unrecognised GC log color: ' + string;
+  throw new Error('Unrecognised GC log color: ' + string);
 }
 
 function parseCCLogColor (string) {
@@ -299,12 +299,12 @@ function parseCCLogColor (string) {
     return 'gray';
   }
 
-  throw 'Unrecognised CC log color: ' + string;
+  throw new Error('Unrecognised CC log color: ' + string);
 }
 
 function createOrMergeNode (graph, logKind, addr, rc, color, kind, line) {
   if (logKind !== 'GC' && logKind !== 'CC') {
-    throw 'Bad log kind';
+    throw new Error('Bad log kind');
   }
 
   if (addr === 0) {
@@ -321,12 +321,12 @@ function createOrMergeNode (graph, logKind, addr, rc, color, kind, line) {
   const id = addressToIdMap.get(addr);
   const node = graph.getNode(id);
   if (!node) {
-    throw `Node not found for address 0x${addr.toString(16)} id ${id}`;
+    throw new Error(`Node not found for address 0x${addr.toString(16)} id ${id}`);
   }
 
   if ((logKind === 'CC' && node.hasCCData) ||
       (logKind === 'GC' && node.hasGCData)) {
-    throw 'Duplicate node address: ' + line;
+    throw new Error('Duplicate node address: ' + line);
   }
 
   if (logKind === 'CC') {
@@ -348,7 +348,7 @@ function createOrMergeNode (graph, logKind, addr, rc, color, kind, line) {
 
 function getOrCreateNode (graph, logKind, addr, rc, color, kind) {
   if (logKind !== 'GC' && logKind !== 'CC') {
-    throw 'Bad log kind';
+    throw new Error('Bad log kind');
   }
 
   const addressToIdMap = graph.addressToIdMap;
@@ -361,7 +361,7 @@ function getOrCreateNode (graph, logKind, addr, rc, color, kind) {
   const id = addressToIdMap.get(addr);
   const node = graph.getNode(id);
   if (!node) {
-    throw `Node not found for address 0x${addr.toString(16)} id ${id}`;
+    throw new Error(`Node not found for address 0x${addr.toString(16)} id ${id}`);
   }
 
   return node;
@@ -390,7 +390,7 @@ function createNode (graph, logKind, addr, rc, color, kind) {
 
 function ensureMatch (field, a, b, line) {
   if (a !== b) {
-    throw `Field '${field}' doesn't match between CC and GC logs: got ${a} and ${b} for ${line}`;
+    throw new Error(`Field '${field}' doesn't match between CC and GC logs: got ${a} and ${b} for ${line}`);
   }
 }
 
@@ -420,7 +420,7 @@ function processNewEdges (graph, newNodes) {
 
       /*
       if (id === undefined) {
-        throw "Edge target address not found: " + addr.toString(16);
+        throw new Error("Edge target address not found: " + addr.toString(16));
       }
       edges[i] = id;
       */

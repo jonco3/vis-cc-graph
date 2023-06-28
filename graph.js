@@ -33,6 +33,10 @@ export class Graph {
     return this.nodes[nodeId];
   }
 
+  nodeCount () {
+    return this.nodes.length;
+  }
+
   addEdge (sourceNode, targetNode, name) {
     sourceNode.outgoingEdges.push(targetNode.id);
     sourceNode.outgoingEdgeNames.push(name);

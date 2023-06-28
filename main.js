@@ -361,7 +361,7 @@ function display () {
   } else {
     logKind = 'GC';
   }
-  setStatus(`Displaying ${nodeList.length} out of ${graph.length} nodes from ${logKind} logs`);
+  setStatus(`Displaying ${nodeList.length} out of ${graph.nodeCount()} nodes from ${logKind} logs`);
 
   function ticked () {
     nodeGroup

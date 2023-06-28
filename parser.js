@@ -74,7 +74,7 @@ export async function parseCCLog (text, maybeGCGraph) {
         }
         if (!node.hasGCData) {
           const addr = parseAddr(words[1]);
-          const name = graph.intern(words.slice(2).join(' '));
+          const name = words.slice(2).join(' ');
           const target = getOrCreateNode(graph, addr);
           graph.addEdge(node, target, name);
         }
@@ -111,7 +111,6 @@ export async function parseCCLog (text, maybeGCGraph) {
           }
           kind = words[2];
         }
-        kind = graph.intern(kind);
         node = createOrMergeNode(graph, addr, 'CC', rc, color, kind, line);
         break;
       }
@@ -205,7 +204,7 @@ export async function parseGCLog (text, maybeCCGraph) {
           }
           if (!node.hasCCData) {
             const addr = parseAddr(words[1]);
-            const name = graph.intern(words.slice(3).join(' '));
+            const name = words.slice(3).join(' ');
             const target = getOrCreateNode(graph, addr);
             graph.addEdge(node, target, name);
           }
@@ -213,7 +212,7 @@ export async function parseGCLog (text, maybeCCGraph) {
         } else {
           const addr = parseAddr(words[0]);
           const color = parseGCLogColor(words[1]);
-          const kind = graph.intern(words[2]);
+          const kind = words[2];
           // todo: some kind of name in words[3]
           node = createOrMergeNode(graph, addr, 'GC', -1, color, kind, line);
         }
@@ -296,6 +295,8 @@ function parseCCLogColor (string) {
 
 function createOrMergeNode (graph, addr, logKind, rc, color, kind, line) {
   assert(logKind === 'GC' || logKind === 'CC', 'Bad log kind');
+
+  kind = graph.intern(kind);
 
   if (addr === 0) {
     // todo: call directly

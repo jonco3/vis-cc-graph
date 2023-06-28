@@ -38,6 +38,7 @@ export class Graph {
   }
 
   addEdge (sourceNode, targetNode, name) {
+    name = this.intern(name);
     sourceNode.outgoingEdges.push(targetNode.id);
     sourceNode.outgoingEdgeNames.push(name);
     targetNode.incomingEdges.push(sourceNode.id);

@@ -75,7 +75,7 @@ export async function parseCCLog (text, maybeGCGraph) {
         if (!node.hasGCData) {
           const addr = parseAddr(words[1]);
           const name = graph.intern(words.slice(2).join(' '));
-          let target = getOrCreateNode(graph, addr);
+          const target = getOrCreateNode(graph, addr);
           graph.addEdge(node, target);
         }
         break;
@@ -206,7 +206,7 @@ export async function parseGCLog (text, maybeCCGraph) {
           if (!node.hasCCData) {
             const addr = parseAddr(words[1]);
             const name = graph.intern(words.slice(3).join(' '));
-            let target = getOrCreateNode(graph, addr);
+            const target = getOrCreateNode(graph, addr);
             graph.addEdge(node, target);
           }
           // todo: check match when already have edges from CC log
@@ -318,7 +318,7 @@ function createOrMergeNode (graph, addr, logKind, rc, color, kind, line) {
   }
 
   ensureMatch('address', node.address, addr, line);
-  
+
   if (!node.hasGCData && !node.hasCCData) {
     // Populate empty node created by forward reference.
     node.rc = rc;
@@ -348,7 +348,7 @@ function createOrMergeNode (graph, addr, logKind, rc, color, kind, line) {
 
 function getOrCreateNode (graph, addr, logKind, rc, color, kind) {
   assert(logKind === 'GC' || logKind === 'CC' || logKind === undefined,
-         'Bad log kind');
+    'Bad log kind');
 
   const addressToIdMap = graph.addressToIdMap;
   if (!addressToIdMap.has(addr)) {
@@ -384,10 +384,10 @@ function ensureMatch (field, a, b, line) {
   }
 }
 
-function checkAllEdgeTargetsFound(graph) {
+function checkAllEdgeTargetsFound (graph) {
   for (const node of graph.nodes) {
     if (!node.hasCCData && !node.hasGCData) {
-      throw new Error("Edge target address not found: " + node.address.toString(16));
+      throw new Error('Edge target address not found: ' + node.address.toString(16));
     }
   }
 }

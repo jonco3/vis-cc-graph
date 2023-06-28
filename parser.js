@@ -4,6 +4,7 @@
 
 import { Graph } from './graph.js';
 import { poll } from './main.js';
+import { assert } from './utils.js';
 
 function ensureGraph (maybeExistingGraph) {
   if (maybeExistingGraph) {
@@ -21,8 +22,6 @@ export async function parseCCLog (text, maybeGCGraph) {
   const weakMapEntries = [];
 
   let count = 0;
-
-  const nodesAdded = [];
 
   for (const match of matchLines(text)) {
     const line = match[0];
@@ -75,9 +74,9 @@ export async function parseCCLog (text, maybeGCGraph) {
         }
         if (!node.hasGCData) {
           const addr = parseAddr(words[1]);
-          const kind = graph.intern(words.slice(2).join(' '));
-          node.outgoingEdges.push(addr);
-          node.outgoingEdgeNames.push(kind);
+          const name = graph.intern(words.slice(2).join(' '));
+          let target = getOrCreateNode(graph, addr);
+          graph.addEdge(node, target);
         }
         break;
       }
@@ -113,10 +112,7 @@ export async function parseCCLog (text, maybeGCGraph) {
           kind = words[2];
         }
         kind = graph.intern(kind);
-        node = createOrMergeNode(graph, 'CC', addr, rc, color, kind, line);
-        if (!node.hasGCData) {
-          nodesAdded.push(node);
-        }
+        node = createOrMergeNode(graph, addr, 'CC', rc, color, kind, line);
         break;
       }
     }
@@ -125,8 +121,6 @@ export async function parseCCLog (text, maybeGCGraph) {
       break;
     }
   }
-
-  processNewEdges(graph, nodesAdded);
 
   const addressToIdMap = graph.addressToIdMap;
   for (let [line, map, ...fields] of weakMapEntries) {
@@ -154,16 +148,18 @@ export async function parseCCLog (text, maybeGCGraph) {
     }
 
     // Create a fake node for each entry.
-    const entry = createNode(graph, 'CC', 0, -1, '', 'WeakMapEntry');
+    const entry = createNode(graph, 0, 'CC', -1, '', 'WeakMapEntry');
     if (hasMap) {
-      createEdge(map, entry, 'WeakMap entry');
+      graph.addEdge(map, entry, 'WeakMap entry');
     }
-    createEdge(key, entry, '(Used as WeakMap key)');
-    createEdge(entry, value, 'WeakMap value');
+    graph.addEdge(key, entry, '(Used as WeakMap key)');
+    graph.addEdge(entry, value, 'WeakMap value');
     if (delegate !== key) {
-      createEdge(delegate, key, '(Used as WeakMap key delegate)');
+      graph.addEdge(delegate, key, '(Used as WeakMap key delegate)');
     }
   }
+
+  checkAllEdgeTargetsFound(graph);
 
   return graph;
 }
@@ -175,7 +171,6 @@ export async function parseGCLog (text, maybeCCGraph) {
   let section;
   let count = 0;
   const roots = [];
-  const nodesAdded = [];
 
   for (const match of matchLines(text)) {
     const line = match[0];
@@ -210,9 +205,9 @@ export async function parseGCLog (text, maybeCCGraph) {
           }
           if (!node.hasCCData) {
             const addr = parseAddr(words[1]);
-            const kind = graph.intern(words.slice(3).join(' '));
-            node.outgoingEdges.push(addr);
-            node.outgoingEdgeNames.push(kind);
+            const name = graph.intern(words.slice(3).join(' '));
+            let target = getOrCreateNode(graph, addr);
+            graph.addEdge(node, target);
           }
           // todo: check match when already have edges from CC log
         } else {
@@ -220,18 +215,13 @@ export async function parseGCLog (text, maybeCCGraph) {
           const color = parseGCLogColor(words[1]);
           const kind = graph.intern(words[2]);
           // todo: some kind of name in words[3]
-          node = createOrMergeNode(graph, 'GC', addr, -1, color, kind, line);
-          if (!node.hasCCData) {
-            nodesAdded.push(node);
-          }
+          node = createOrMergeNode(graph, addr, 'GC', -1, color, kind, line);
         }
       } else {
         throw new Error('Bad section: ' + section);
       }
     }
   }
-
-  processNewEdges(graph, nodesAdded);
 
   const addressToIdMap = graph.addressToIdMap;
   for (const words of roots) {
@@ -251,14 +241,16 @@ export async function parseGCLog (text, maybeCCGraph) {
     // Hack: use special hardcoded addresses for dummy root set nodes.
     const setAddr = color === 'black' ? 1 : 2;
     const setName = color === 'black' ? 'Black roots' : 'Gray roots';
-    const rootSet = getOrCreateNode(graph, 'GC', setAddr, -1, color, setName);
-    createEdge(rootSet, node, name);
+    const rootSet = getOrCreateNode(graph, setAddr, 'GC', -1, color, setName);
+    graph.addEdge(rootSet, node, name);
 
     // todo: if we have CC data, don't include gray roots we have information
     // about from the CC log.
   }
 
   // todo: process weak map entries
+
+  checkAllEdgeTargetsFound(graph);
 
   return graph;
 }
@@ -302,81 +294,79 @@ function parseCCLogColor (string) {
   throw new Error('Unrecognised CC log color: ' + string);
 }
 
-function createOrMergeNode (graph, logKind, addr, rc, color, kind, line) {
-  if (logKind !== 'GC' && logKind !== 'CC') {
-    throw new Error('Bad log kind');
-  }
+function createOrMergeNode (graph, addr, logKind, rc, color, kind, line) {
+  assert(logKind === 'GC' || logKind === 'CC', 'Bad log kind');
 
   if (addr === 0) {
-    return createNode(graph, logKind, addr, rc, color, kind);
+    // todo: call directly
+    return createNode(graph, addr, logKind, rc, color, kind);
   }
 
   const addressToIdMap = graph.addressToIdMap;
   if (!addressToIdMap.has(addr)) {
-    const node = createNode(graph, logKind, addr, rc, color, kind);
+    const node = createNode(graph, addr, logKind, rc, color, kind);
     addressToIdMap.set(addr, node.id);
     return node;
   }
 
   const id = addressToIdMap.get(addr);
   const node = graph.getNode(id);
-  if (!node) {
-    throw new Error(`Node not found for address 0x${addr.toString(16)} id ${id}`);
-  }
 
   if ((logKind === 'CC' && node.hasCCData) ||
       (logKind === 'GC' && node.hasGCData)) {
     throw new Error('Duplicate node address: ' + line);
   }
 
-  if (logKind === 'CC') {
+  ensureMatch('address', node.address, addr, line);
+  
+  if (!node.hasGCData && !node.hasCCData) {
+    // Populate empty node created by forward reference.
+    node.rc = rc;
+    node.color = color;
+    node.name = kind;
+    if (logKind === 'CC') {
+      node.hasCCData = true;
+    } else {
+      node.hasGCData = true;
+    }
+  } else if (logKind === 'CC') {
     // Merge CC data into existing GC log node.
-    ensureMatch('address', node.address, addr, line);
     node.rc = rc;
     ensureMatch('color', node.color, color, line);
     node.name = kind;
+    // todo: should kind match?
     node.hasCCData = true;
   } else {
     // Merge GC data into existing CC log node.
-    ensureMatch('address', node.address, addr, line);
     ensureMatch('color', node.color, color, line);
+    // todo: should kind match?
     node.hasGCData = true;
   }
 
   return node;
 }
 
-function getOrCreateNode (graph, logKind, addr, rc, color, kind) {
-  if (logKind !== 'GC' && logKind !== 'CC') {
-    throw new Error('Bad log kind');
-  }
+function getOrCreateNode (graph, addr, logKind, rc, color, kind) {
+  assert(logKind === 'GC' || logKind === 'CC' || logKind === undefined,
+         'Bad log kind');
 
   const addressToIdMap = graph.addressToIdMap;
   if (!addressToIdMap.has(addr)) {
-    const node = createNode(graph, logKind, addr, rc, color, kind);
+    const node = createNode(graph, addr, logKind, rc, color, kind);
     addressToIdMap.set(addr, node.id);
     return node;
   }
 
   const id = addressToIdMap.get(addr);
-  const node = graph.getNode(id);
-  if (!node) {
-    throw new Error(`Node not found for address 0x${addr.toString(16)} id ${id}`);
-  }
-
-  return node;
+  return graph.getNode(id);
 }
 
-function createNode (graph, logKind, addr, rc, color, kind) {
+function createNode (graph, addr, logKind, rc, color, kind) {
   const node = {
     address: addr,
     rc,
     color,
     name: kind,
-    incomingEdges: [],
-    incomingEdgeNames: [],
-    outgoingEdges: [],
-    outgoingEdgeNames: [],
     root: false,
     visited: false,
     filtered: false,
@@ -394,46 +384,10 @@ function ensureMatch (field, a, b, line) {
   }
 }
 
-function createEdge (source, target, name) {
-  // Must be called after edge address are replaced with ids!
-  source.outgoingEdges.push(target.id);
-  source.outgoingEdgeNames.push(name);
-  target.incomingEdges.push(source.id);
-  target.incomingEdgeNames.push(name);
-}
-
-function processNewEdges (graph, newNodes) {
-  for (const node of newNodes) {
-    const edges = node.outgoingEdges;
-
-    // TODO: Some GC things aren't present in the heap dump and so we ignore
-    // them here. This is a JS engine bug.
-    const names = node.outgoingEdgeNames;
-    node.outgoingEdges = [];
-    node.outgoingEdgeNames = [];
-
-    for (let i = 0; i < edges.length; i++) {
-      // Replace address with id.
-      const addr = edges[i];
-      const name = names[i];
-      const id = graph.addressToIdMap.get(addr);
-
-      /*
-      if (id === undefined) {
-        throw new Error("Edge target address not found: " + addr.toString(16));
-      }
-      edges[i] = id;
-      */
-      if (id === undefined) {
-        continue;
-      }
-      node.outgoingEdges.push(id);
-      node.outgoingEdgeNames.push(name);
-
-      // Add incoming edge to target.
-      const target = graph.getNode(id);
-      target.incomingEdges.push(node.id);
-      target.incomingEdgeNames.push(name);
+function checkAllEdgeTargetsFound(graph) {
+  for (const node of graph.nodes) {
+    if (!node.hasCCData && !node.hasGCData) {
+      throw new Error("Edge target address not found: " + node.address.toString(16));
     }
   }
 }

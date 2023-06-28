@@ -8,7 +8,7 @@ export class Graph {
   constructor () {
     this.nodes = [];
     this.internMap = new Map();
-    this.addressToIdMap = new Map();
+    this.addressToIdMap = new Map(); // todo: move to parser
   }
 
   // Add a node to the graph and return its id.
@@ -31,6 +31,13 @@ export class Graph {
   getNode (nodeId) {
     this.checkNodeId(nodeId);
     return this.nodes[nodeId];
+  }
+
+  addEdge (sourceNode, targetNode, name) {
+    sourceNode.outgoingEdges.push(targetNode.id);
+    sourceNode.outgoingEdgeNames.push(name);
+    targetNode.incomingEdges.push(sourceNode.id);
+    targetNode.incomingEdgeNames.push(name);
   }
 
   // Utility method to canonicalise a value.

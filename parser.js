@@ -127,7 +127,10 @@ export async function parseCCLog (text, maybeGCGraph) {
     if (hasMap) {
       const id = addressToIdMap.get(map);
       if (id === undefined) {
-        throw new Error('WeakMapEntry map not found: ' + line);
+        // todo: this happens sometimes
+        // throw new Error("WeakMapEntry field not found: " + line);
+        console.log('WeakMapEntry map not found: ' + line);
+        continue;
       }
       map = graph.getNode(id);
     }
@@ -276,6 +279,10 @@ function parseGCLogColor (string) {
 
   if (string === 'G') {
     return 'gray';
+  }
+
+  if (string === 'W') {
+    return 'white';
   }
 
   throw new Error('Unrecognised GC log color: ' + string);
